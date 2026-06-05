@@ -41,6 +41,13 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Add shipping columns if table already exists (idempotent)
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='shop_easy' AND TABLE_NAME='orders' AND COLUMN_NAME='shipping_name');
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE orders ADD COLUMN shipping_name VARCHAR(255), ADD COLUMN shipping_email VARCHAR(255), ADD COLUMN shipping_address TEXT', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 CREATE TABLE IF NOT EXISTS order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
