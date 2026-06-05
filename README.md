@@ -6,7 +6,11 @@
 
 ## Architecture
 
-![Shop Easy Architecture](docs/architecture-proj.png)
+![Shop Easy Architecture](https://raw.githubusercontent.com/aniljadhavmca/shop-easy/main/docs/architecture-proj.png)
+
+### Live Demo Screenshot
+
+![Shop Easy Screenshot](https://raw.githubusercontent.com/aniljadhavmca/shop-easy/main/docs/screen1.png)
 
 ### End-to-End Flow
 
