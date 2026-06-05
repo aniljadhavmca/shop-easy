@@ -6,7 +6,7 @@
 
 ## Architecture
 
-![Shop Easy Architecture](docs/architecture.svg)
+![Shop Easy Architecture](docs/architecture-proj.png)
 
 ### End-to-End Flow
 
