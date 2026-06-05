@@ -11,6 +11,7 @@ function App() {
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
   const [notification, setNotification] = useState('');
+  const [shipping, setShipping] = useState({ name: '', email: '', address: '' });
 
   useEffect(() => { fetchProducts(); fetchCart(); }, []);
 
@@ -32,16 +33,19 @@ function App() {
   };
 
   const checkout = () => {
+    if (!shipping.name || !shipping.email || !shipping.address) {
+      notify('Please fill all shipping details'); return;
+    }
     fetch(`${API}/orders`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: USER_ID })
+      body: JSON.stringify({ user_id: USER_ID, shipping_name: shipping.name, shipping_email: shipping.email, shipping_address: shipping.address })
     }).then(r => r.json()).then(order => {
       if (order.error) { notify(order.error); return; }
       return fetch(`${API}/payments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: order.id, method: 'card' })
       });
-    }).then(() => { fetchCart(); fetchOrders(); setPage('orders'); notify('🎉 Payment successful!'); });
+    }).then(() => { fetchCart(); fetchOrders(); setShipping({ name: '', email: '', address: '' }); setPage('orders'); notify('🎉 Payment successful!'); });
   };
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -149,12 +153,53 @@ function App() {
                   <div className="summary-row"><span>Subtotal</span><span>${cartTotal.toFixed(2)}</span></div>
                   <div className="summary-row"><span>Shipping</span><span className="free">FREE</span></div>
                   <div className="summary-total"><span>Total</span><span>${cartTotal.toFixed(2)}</span></div>
-                  <button className="checkout-btn" onClick={checkout}>
-                    💳 Pay ${cartTotal.toFixed(2)}
+                  <button className="checkout-btn" onClick={() => setPage('checkout')}>
+                    Proceed to Checkout
                   </button>
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {page === 'checkout' && (
+          <div className="page-container">
+            <div className="page-header">
+              <h2>📋 Checkout</h2>
+            </div>
+            <div className="checkout-layout">
+              <div className="checkout-form">
+                <h3>Shipping Details</h3>
+                <div className="form-group">
+                  <label>Full Name</label>
+                  <input type="text" placeholder="John Smith" value={shipping.name}
+                    onChange={e => setShipping({...shipping, name: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Email</label>
+                  <input type="email" placeholder="john@example.com" value={shipping.email}
+                    onChange={e => setShipping({...shipping, email: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Shipping Address</label>
+                  <textarea placeholder="123 Main St, City, State, ZIP" value={shipping.address}
+                    onChange={e => setShipping({...shipping, address: e.target.value})} />
+                </div>
+              </div>
+              <div className="cart-summary">
+                <h3>Order Summary</h3>
+                {cart.map(item => (
+                  <div key={item.id} className="summary-row">
+                    <span>{item.name} × {item.quantity}</span>
+                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="summary-total"><span>Total</span><span>${cartTotal.toFixed(2)}</span></div>
+                <button className="checkout-btn" onClick={checkout}>
+                  💳 Pay ${cartTotal.toFixed(2)}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -174,14 +219,23 @@ function App() {
               <div className="orders-list">
                 {orders.map(o => (
                   <div key={o.id} className="order-card">
-                    <div className="order-left">
-                      <span className="order-id">Order #{o.id}</span>
-                      <span className="order-date">{new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <div className="order-top">
+                      <div className="order-left">
+                        <span className="order-id">Order #{o.id}</span>
+                        <span className="order-date">{new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+                      <div className="order-right">
+                        <span className="order-amount">${parseFloat(o.total).toFixed(2)}</span>
+                        <span className={`status-badge ${o.status}`}>{o.status}</span>
+                      </div>
                     </div>
-                    <div className="order-right">
-                      <span className="order-amount">${parseFloat(o.total).toFixed(2)}</span>
-                      <span className={`status-badge ${o.status}`}>{o.status}</span>
-                    </div>
+                    {o.shipping_name && (
+                      <div className="order-shipping">
+                        <span>📬 {o.shipping_name}</span>
+                        <span>✉️ {o.shipping_email}</span>
+                        <span>📍 {o.shipping_address}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

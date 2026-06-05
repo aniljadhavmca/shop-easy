@@ -31,7 +31,7 @@ app.get('/orders/:userId', async (req, res) => {
 });
 
 app.post('/orders', async (req, res) => {
-  const { user_id } = req.body;
+  const { user_id, shipping_name, shipping_email, shipping_address } = req.body;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -42,7 +42,10 @@ app.post('/orders', async (req, res) => {
     if (!cartItems.length) { conn.release(); return res.status(400).json({ error: 'Cart is empty' }); }
 
     const total = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    const [order] = await conn.query('INSERT INTO orders (user_id, total) VALUES (?, ?)', [user_id, total]);
+    const [order] = await conn.query(
+      'INSERT INTO orders (user_id, total, shipping_name, shipping_email, shipping_address) VALUES (?, ?, ?, ?, ?)',
+      [user_id, total, shipping_name, shipping_email, shipping_address]
+    );
 
     for (const item of cartItems) {
       await conn.query('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
