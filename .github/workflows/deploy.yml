@@ -1,0 +1,56 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: shop-easy-cluster
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push images
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          services=("product-service" "cart-service" "order-service" "payment-service" "frontend")
+          for svc in "${services[@]}"; do
+            docker build -t $REGISTRY/shop-easy/$svc:latest -t $REGISTRY/shop-easy/$svc:${{ github.sha }} ./$svc
+            docker push $REGISTRY/shop-easy/$svc --all-tags
+          done
+
+      - name: Deploy services to ECS
+        run: |
+          services=("product" "cart" "order" "payment")
+          for svc in "${services[@]}"; do
+            aws ecs update-service --cluster $ECS_CLUSTER --service ${svc}-service --force-new-deployment
+          done
+          aws ecs update-service --cluster $ECS_CLUSTER --service frontend --force-new-deployment
+
+      - name: Wait for stable deployment
+        run: |
+          services=("product-service" "cart-service" "order-service" "payment-service" "frontend")
+          for svc in "${services[@]}"; do
+            aws ecs wait services-stable --cluster $ECS_CLUSTER --services $svc
+          done
+          echo "✅ All services deployed successfully!"

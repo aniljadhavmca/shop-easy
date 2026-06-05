@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: shop_easy
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "4001:4001"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_NAME: shop_easy
+    depends_on:
+      db: { condition: service_healthy }
+
+  cart-service:
+    build: ./cart-service
+    ports:
+      - "4002:4002"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_NAME: shop_easy
+    depends_on:
+      db: { condition: service_healthy }
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "4003:4003"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_NAME: shop_easy
+    depends_on:
+      db: { condition: service_healthy }
+
+  payment-service:
+    build: ./payment-service
+    ports:
+      - "4004:4004"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_NAME: shop_easy
+    depends_on:
+      db: { condition: service_healthy }
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - product-service
+      - cart-service
+      - order-service
+      - payment-service
