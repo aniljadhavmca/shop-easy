@@ -1,3 +1,4 @@
 region      = "us-east-1"
 project     = "shop-easy"
 db_password = "your-secure-password-here"
+aws_profile = "shop-easy"

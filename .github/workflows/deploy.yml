@@ -35,7 +35,9 @@ jobs:
         run: |
           services=("product-service" "cart-service" "order-service" "payment-service" "frontend")
           for svc in "${services[@]}"; do
-            docker build -t $REGISTRY/shop-easy/$svc:latest -t $REGISTRY/shop-easy/$svc:${{ github.sha }} ./$svc
+            docker build --platform linux/amd64 --provenance=false \
+              -t $REGISTRY/shop-easy/$svc:latest \
+              -t $REGISTRY/shop-easy/$svc:${{ github.sha }} ./$svc
             docker push $REGISTRY/shop-easy/$svc --all-tags
           done
 

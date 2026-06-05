@@ -6,8 +6,19 @@ resource "aws_security_group" "ecs" {
   name   = "${var.project}-ecs-sg"
   vpc_id = aws_vpc.main.id
 
-  ingress { from_port = 0; to_port = 65535; protocol = "tcp"; security_groups = [aws_security_group.alb.id] }
-  egress  { from_port = 0; to_port = 0; protocol = "-1"; cidr_blocks = ["0.0.0.0/0"] }
+  ingress {
+    from_port       = 0
+    to_port         = 65535
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_cloudwatch_log_group" "ecs" {
@@ -46,7 +57,11 @@ resource "aws_ecs_task_definition" "services" {
     ]
     logConfiguration = {
       logDriver = "awslogs"
-      options   = { "awslogs-group" = "/ecs/${var.project}", "awslogs-region" = var.region, "awslogs-stream-prefix" = each.key }
+      options = {
+        "awslogs-group"         = "/ecs/${var.project}"
+        "awslogs-region"        = var.region
+        "awslogs-stream-prefix" = each.key
+      }
     }
   }])
 }
@@ -56,7 +71,7 @@ resource "aws_ecs_service" "services" {
   name            = "${each.key}-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.services[each.key].arn
-  desired_count   = 2
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -71,7 +86,6 @@ resource "aws_ecs_service" "services" {
   }
 }
 
-# Frontend service
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project}-frontend"
   network_mode             = "awsvpc"
@@ -86,7 +100,11 @@ resource "aws_ecs_task_definition" "frontend" {
     portMappings = [{ containerPort = 80 }]
     logConfiguration = {
       logDriver = "awslogs"
-      options   = { "awslogs-group" = "/ecs/${var.project}", "awslogs-region" = var.region, "awslogs-stream-prefix" = "frontend" }
+      options = {
+        "awslogs-group"         = "/ecs/${var.project}"
+        "awslogs-region"        = var.region
+        "awslogs-stream-prefix" = "frontend"
+      }
     }
   }])
 }
@@ -95,7 +113,7 @@ resource "aws_ecs_service" "frontend" {
   name            = "frontend"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 2
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -110,7 +128,6 @@ resource "aws_ecs_service" "frontend" {
   }
 }
 
-# ECR repositories
 resource "aws_ecr_repository" "services" {
   for_each = local.services
   name     = "${var.project}/${each.key}-service"
