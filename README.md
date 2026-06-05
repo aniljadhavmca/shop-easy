@@ -34,16 +34,31 @@
 | Order Service | 4003 | Order processing |
 | Payment Service | 4004 | Payment handling |
 
-## Running Locally
+## Quick Start (Local Development)
 
 ```bash
 docker-compose up --build
 ```
 
-## Deploying to AWS
+Open http://localhost:3000
 
-```bash
-cd terraform
-terraform init
-terraform apply
-```
+## Deploy to AWS (Production)
+
+👉 **See [DEPLOYMENT.md](DEPLOYMENT.md) for complete step-by-step guide** — covers:
+
+1. Creating AWS account & IAM user
+2. Configuring AWS CLI credentials
+3. Terraform infrastructure provisioning
+4. Database initialization
+5. Building & pushing Docker images to ECR
+6. ECS Fargate deployment
+7. GitHub Actions CI/CD setup (1-click deploy)
+
+## Tech Stack
+
+- **Frontend:** React, Nginx
+- **Backend:** Node.js, Express
+- **Database:** MySQL 8.0 (AWS RDS)
+- **Infra:** ECS Fargate, ALB, VPC, ECR
+- **IaC:** Terraform
+- **CI/CD:** GitHub Actions

@@ -1,5 +1,6 @@
 provider "aws" {
-  region = var.region
+  region  = var.region
+  profile = "shop-easy"
 }
 
 variable "region" { default = "us-east-1" }
