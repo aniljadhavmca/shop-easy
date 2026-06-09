@@ -8,6 +8,16 @@ app.use(express.json());
 // Structured logging for CloudWatch Logs Insights
 const log = (event, data) => console.log(JSON.stringify({ timestamp: new Date().toISOString(), event, ...data }));
 
+// CloudWatch Embedded Metric Format — publishes real metrics (big font in dashboard)
+const emitMetric = (metricName, value) => console.log(JSON.stringify({
+  _aws: { Timestamp: Date.now(), CloudWatchMetrics: [{ Namespace: 'ShopEasy/Orders', Dimensions: [], Metrics: [{ Name: metricName, Unit: 'Count' }] }] },
+  [metricName]: value
+}));
+const emitRevenue = (amount) => console.log(JSON.stringify({
+  _aws: { Timestamp: Date.now(), CloudWatchMetrics: [{ Namespace: 'ShopEasy/Orders', Dimensions: [], Metrics: [{ Name: 'Revenue', Unit: 'None' }] }] },
+  Revenue: amount
+}));
+
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
 
 let pool;
@@ -59,7 +69,8 @@ app.post('/orders', async (req, res) => {
       await conn.query('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.product_id]);
     }
     await conn.commit();
-    log('ORDER_PENDING', { order_id: order.insertId, user_id, amount: total, customer: shipping_name, email: shipping_email });
+    log('ORDER_PENDING', { order_id: order.insertId, user_id, amount: total, customer: shipping_name, email: shipping_email, reason: 'Awaiting payment' });
+    emitMetric('OrdersPending', 1);
     res.status(201).json({ id: order.insertId, total, status: 'pending' });
   } catch (e) {
     await conn.rollback();
@@ -102,14 +113,20 @@ app.post('/payments/confirm', async (req, res) => {
       );
       await pool.query('UPDATE orders SET status = "paid" WHERE id = ?', [order_id]);
       await pool.query('DELETE FROM cart_items WHERE user_id = ?', [order[0].user_id]);
-      log('ORDER_BOOKED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total), customer: order[0].shipping_name, email: order[0].shipping_email });
+      log('ORDER_BOOKED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total), customer: order[0].shipping_name, email: order[0].shipping_email, reason: 'Payment successful' });
+      emitMetric('OrdersBooked', 1);
+      emitRevenue(parseFloat(order[0].total));
       res.json({ status: 'completed', amount: order[0].total });
     } else {
       await pool.query(
         'INSERT INTO payments (order_id, amount, status, method) VALUES (?, ?, "failed", "stripe")',
         [order_id, order[0].total]
       );
-      log('ORDER_FAILED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total), stripe_status: paymentIntent.status });
+      const failReason = paymentIntent.last_payment_error
+        ? paymentIntent.last_payment_error.message
+        : `Payment ${paymentIntent.status}`;
+      log('ORDER_FAILED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total), reason: failReason, stripe_status: paymentIntent.status });
+      emitMetric('OrdersFailed', 1);
       res.status(400).json({ status: 'failed', stripe_status: paymentIntent.status });
     }
   } catch (e) {
