@@ -7,6 +7,7 @@
 | Frontend | React 18, Nginx |
 | Backend | Node.js 18, Express |
 | Database | MySQL 8.0 (AWS RDS) |
+| Payments | Stripe (test mode) |
 | Containers | Docker, AWS ECS Fargate |
 | Load Balancer | AWS ALB (Application Load Balancer) |
 | Container Registry | Amazon ECR |
@@ -94,6 +95,8 @@ Click **New repository secret** for each:
 | `AWS_ACCESS_KEY_ID` | Your access key (starts with `AKIA...`) |
 | `AWS_SECRET_ACCESS_KEY` | Your secret key |
 | `DB_PASSWORD` | Letters + numbers only (see rules above) |
+| `STRIPE_SECRET_KEY` | Stripe test secret key (`sk_test_...`) |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe test publishable key (`pk_test_...`) |
 
 ### Step 3: Deploy
 
@@ -128,10 +131,17 @@ No AWS account needed. Just Docker.
 ```bash
 git clone https://github.com/aniljadhavmca/shop-easy.git
 cd shop-easy
+
+# Set Stripe keys (get from https://dashboard.stripe.com/test/apikeys)
+export STRIPE_SECRET_KEY=sk_test_your_key
+export REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_your_key
+
 docker compose up --build
 ```
 
 Open http://localhost:3000
+
+Test card: `4242 4242 4242 4242` | Any future expiry | Any CVC
 
 Reset data:
 ```bash

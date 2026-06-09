@@ -1,6 +1,6 @@
 # 🛍️ Shop Easy — E-Commerce Microservices
 
-> Lightweight microservices e-commerce app on AWS ECS Fargate. 1-click deploy via GitHub Actions.
+> Lightweight microservices e-commerce app on AWS ECS Fargate with Stripe payments. 1-click deploy via GitHub Actions.
 
 ---
 
@@ -21,7 +21,7 @@ User → Browser → ALB (port 80) → path-based routing:
                                     /products*  → Product Service (ECS)
                                     /cart*      → Product Service (ECS)
                                     /orders*    → Order Service (ECS)
-                                    /payments*  → Order Service (ECS)
+                                    /payments*  → Order Service (ECS) → Stripe API
                                     /*          → Frontend (ECS/Nginx)
                                                         ↓
                                     All services → MySQL RDS (private)
@@ -33,9 +33,9 @@ User → Browser → ALB (port 80) → path-based routing:
 
 | Service | Port | Handles | Tech |
 |---------|------|---------|------|
-| Frontend | 80 | UI — browse, cart, checkout | React + Nginx |
+| Frontend | 80 | UI — browse, cart, checkout, Stripe card form | React + Stripe Elements + Nginx |
 | Product Service | 4001 | Products + Cart | Node.js/Express |
-| Order Service | 4002 | Orders + Payments | Node.js/Express |
+| Order Service | 4002 | Orders + Stripe Payments | Node.js/Express + Stripe SDK |
 
 ---
 
@@ -47,13 +47,15 @@ User → Browser → ALB (port 80) → path-based routing:
 
 ### Setup (once)
 
-Add **3 secrets** to your GitHub repo → Settings → Secrets → Actions:
+Add **5 secrets** to your GitHub repo → Settings → Secrets → Actions:
 
 | Secret | Value |
 |--------|-------|
 | `AWS_ACCESS_KEY_ID` | Your IAM access key |
 | `AWS_SECRET_ACCESS_KEY` | Your IAM secret key |
 | `DB_PASSWORD` | Any password — letters + numbers only (e.g. `ShopEasy2024Strong`) |
+| `STRIPE_SECRET_KEY` | Stripe test secret key (`sk_test_...`) |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe test publishable key (`pk_test_...`) |
 
 ### Deploy
 
@@ -82,10 +84,16 @@ Same workflow → select `destroy` → all resources + state bucket deleted.
 ## Run Locally
 
 ```bash
+# Set Stripe test keys
+export STRIPE_SECRET_KEY=sk_test_your_key
+export REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_your_key
+
 docker compose up --build
 ```
 
 Open http://localhost:3000
+
+Test card: `4242 4242 4242 4242` | Any future expiry | Any CVC
 
 ---
 
@@ -93,9 +101,10 @@ Open http://localhost:3000
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, Nginx |
-| Backend | Node.js, Express |
+| Frontend | React 18, Stripe Elements, Nginx |
+| Backend | Node.js, Express, Stripe SDK |
 | Database | MySQL 8.0 (RDS) |
+| Payments | Stripe (test mode) |
 | Containers | Docker, ECS Fargate |
 | Networking | VPC, ALB (no NAT) |
 | Registry | Amazon ECR |
@@ -125,11 +134,11 @@ shop-easy/
 
 ## User Flow
 
-1. **Browse Products** — View products with images, prices, categories
+1. **Browse Products** — View products with images, prices, category filters
 2. **Add to Cart** — Click "Add to Cart", badge updates
 3. **View Cart** — See items, quantities, total
-4. **Checkout** — Creates order, deducts stock, clears cart
-5. **Payment** — Processes payment, marks order "paid"
+4. **Checkout** — Fill shipping details, enter card via Stripe
+5. **Payment** — Stripe processes card, order marked "paid"
 6. **Orders** — View past orders with status
 
 ---
@@ -153,5 +162,6 @@ shop-easy/
 - RDS is **private** (`publicly_accessible = false`) — only ECS can reach it
 - ECS tasks in public subnets with security group locked to ALB traffic only
 - DB password stored as GitHub Secret — never in code
+- Stripe keys stored as GitHub Secrets — never in code
 - Terraform state encrypted in S3 with versioning
-- `INSERT IGNORE` schema — safe to re-run without data duplication
+- Stripe test mode — no real charges
