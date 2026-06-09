@@ -6,6 +6,7 @@ variable "region" { default = "us-east-1" }
 variable "project" { default = "shop-easy" }
 variable "db_password" { sensitive = true }
 variable "aws_profile" { default = "" }
+variable "stripe_secret_key" { default = "sk_test_placeholder" sensitive = true }
 
 data "aws_availability_zones" "available" { state = "available" }
 

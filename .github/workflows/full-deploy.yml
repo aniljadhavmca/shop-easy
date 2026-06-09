@@ -49,7 +49,9 @@ jobs:
         working-directory: terraform
         run: |
           terraform init
-          terraform apply -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"
+          terraform apply -auto-approve \
+            -var="db_password=${{ secrets.DB_PASSWORD }}" \
+            -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}"
           echo "ALB_DNS=$(terraform output -raw alb_dns)" >> $GITHUB_ENV
           echo "RDS_HOST=$(terraform output -raw rds_endpoint)" >> $GITHUB_ENV
 
@@ -61,12 +63,17 @@ jobs:
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
-          for svc in product-service order-service frontend db-init; do
+          for svc in product-service order-service db-init; do
             echo "🔨 Building $svc..."
             docker build --platform linux/amd64 --provenance=false --no-cache \
               -t $REGISTRY/$PROJECT/$svc:latest ./$svc
             docker push $REGISTRY/$PROJECT/$svc:latest
           done
+          echo "🔨 Building frontend..."
+          docker build --platform linux/amd64 --provenance=false --no-cache \
+            --build-arg REACT_APP_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }} \
+            -t $REGISTRY/$PROJECT/frontend:latest ./frontend
+          docker push $REGISTRY/$PROJECT/frontend:latest
 
       - name: 🗄️ Run Database Migration
         run: |
@@ -117,7 +124,9 @@ jobs:
         working-directory: terraform
         run: |
           terraform init
-          terraform destroy -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"
+          terraform destroy -auto-approve \
+            -var="db_password=${{ secrets.DB_PASSWORD }}" \
+            -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}"
 
       - name: 🪣 Delete State Bucket
         run: |

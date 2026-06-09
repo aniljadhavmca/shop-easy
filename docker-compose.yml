@@ -35,11 +35,15 @@ services:
       DB_USER: root
       DB_PASSWORD: password
       DB_NAME: shop_easy
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
     depends_on:
       db: { condition: service_healthy }
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_STRIPE_PUBLISHABLE_KEY: ${REACT_APP_STRIPE_PUBLISHABLE_KEY:-pk_test_placeholder}
     ports:
       - "3000:80"
     volumes:

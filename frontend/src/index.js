@@ -1,9 +1,80 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import './index.css';
 
 const API = '';
 const USER_ID = 1;
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
+
+function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [processing, setProcessing] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    if (!shipping.name || !shipping.email || !shipping.address) {
+      onError('Please fill all shipping details'); return;
+    }
+
+    setProcessing(true);
+    try {
+      // 1. Create order
+      const orderRes = await fetch(`${API}/orders`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: USER_ID, shipping_name: shipping.name, shipping_email: shipping.email, shipping_address: shipping.address })
+      });
+      const order = await orderRes.json();
+      if (order.error) { onError(order.error); setProcessing(false); return; }
+
+      // 2. Create payment intent
+      const intentRes = await fetch(`${API}/payments/create-intent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: order.id })
+      });
+      const { clientSecret } = await intentRes.json();
+
+      // 3. Confirm card payment
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: { card: elements.getElement(CardElement) }
+      });
+
+      if (error) {
+        onError(error.message); setProcessing(false); return;
+      }
+
+      // 4. Confirm on backend
+      await fetch(`${API}/payments/confirm`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: order.id, payment_intent_id: paymentIntent.id })
+      });
+
+      onSuccess();
+    } catch (err) {
+      onError('Payment failed. Please try again.');
+    }
+    setProcessing(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="stripe-card-wrapper">
+        <label>Card Details</label>
+        <div className="stripe-card-element">
+          <CardElement options={{ style: { base: { fontSize: '16px', color: '#1a1a2e', '::placeholder': { color: '#9ca3af' } } } }} />
+        </div>
+        <p className="stripe-test-hint">Test card: 4242 4242 4242 4242 | Any future date | Any CVC</p>
+      </div>
+      <button type="submit" className="checkout-btn stripe-pay-btn" disabled={!stripe || processing}>
+        {processing ? '⏳ Processing...' : `💳 Pay $${cartTotal.toFixed(2)}`}
+      </button>
+    </form>
+  );
+}
 
 function App() {
   const [page, setPage] = useState('products');
@@ -33,20 +104,9 @@ function App() {
     fetch(`${API}/cart/${id}`, { method: 'DELETE' }).then(() => fetchCart());
   };
 
-  const checkout = () => {
-    if (!shipping.name || !shipping.email || !shipping.address) {
-      notify('Please fill all shipping details'); return;
-    }
-    fetch(`${API}/orders`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: USER_ID, shipping_name: shipping.name, shipping_email: shipping.email, shipping_address: shipping.address })
-    }).then(r => r.json()).then(order => {
-      if (order.error) { notify(order.error); return; }
-      return fetch(`${API}/payments`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order_id: order.id, method: 'card' })
-      });
-    }).then(() => { fetchCart(); fetchOrders(); setShipping({ name: '', email: '', address: '' }); setPage('orders'); notify('🎉 Payment successful!'); });
+  const handlePaymentSuccess = () => {
+    fetchCart(); fetchOrders(); setShipping({ name: '', email: '', address: '' });
+    setPage('orders'); notify('🎉 Payment successful!');
   };
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -191,6 +251,10 @@ function App() {
                   <textarea placeholder="123 Main St, City, State, ZIP" value={shipping.address}
                     onChange={e => setShipping({...shipping, address: e.target.value})} />
                 </div>
+                <Elements stripe={stripePromise}>
+                  <CheckoutForm cart={cart} cartTotal={cartTotal} shipping={shipping}
+                    onSuccess={handlePaymentSuccess} onError={notify} />
+                </Elements>
               </div>
               <div className="cart-summary">
                 <h3>Order Summary</h3>
@@ -201,9 +265,6 @@ function App() {
                   </div>
                 ))}
                 <div className="summary-total"><span>Total</span><span>${cartTotal.toFixed(2)}</span></div>
-                <button className="checkout-btn" onClick={checkout}>
-                  💳 Pay ${cartTotal.toFixed(2)}
-                </button>
               </div>
             </div>
           </div>

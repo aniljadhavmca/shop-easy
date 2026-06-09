@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+ARG REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
+ENV REACT_APP_STRIPE_PUBLISHABLE_KEY=$REACT_APP_STRIPE_PUBLISHABLE_KEY
 RUN npm run build
 
 FROM nginx:alpine

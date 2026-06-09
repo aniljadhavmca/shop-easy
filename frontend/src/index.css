@@ -143,6 +143,15 @@ nav button.active { background: rgba(233,69,96,0.9); color: white; border-color:
 .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
 .form-group textarea { min-height: 80px; resize: vertical; }
 
+/* ─── Stripe Card ─── */
+.stripe-card-wrapper { margin-top: 20px; }
+.stripe-card-wrapper label { display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
+.stripe-card-element { padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: white; transition: border-color 0.2s; }
+.stripe-card-element:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.stripe-test-hint { font-size: 0.75rem; color: #9ca3af; margin-top: 8px; font-style: italic; }
+.stripe-pay-btn { margin-top: 20px; }
+.stripe-pay-btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; box-shadow: none; }
+
 /* ─── Orders ─── */.orders-list { display: flex; flex-direction: column; gap: 12px; }
 .order-card {
   background: white; padding: 20px 24px; border-radius: 12px; border: 1px solid #f3f4f6;
