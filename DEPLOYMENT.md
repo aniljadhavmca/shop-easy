@@ -143,7 +143,14 @@ Open http://localhost:3000
 
 Test card: `4242 4242 4242 4242` | Any future expiry | Any CVC
 
-Reset data:
+### Test Cards (Stripe)
+
+| Card Number | Result | Dashboard Panel |
+|-------------|--------|-----------------|
+| `4242 4242 4242 4242` | Payment succeeds | ✅ Orders Booked |
+| `4000 0000 0000 0002` | Card declined | ❌ Orders Failed |
+| `4000 0000 0000 9995` | Insufficient funds | ❌ Orders Failed |
+| `4000 0000 0000 0069` | Expired card | ❌ Orders Failed |
 ```bash
 docker compose down -v
 docker compose up --build
