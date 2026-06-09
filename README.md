@@ -66,13 +66,13 @@ Add **5 secrets** to your GitHub repo → Settings → Secrets → Actions:
 ### What happens automatically:
 ```
 Step 1: Creates S3 bucket for Terraform state
-Step 2: Provisions AWS infra (VPC, ALB, ECS, RDS, ECR)
+Step 2: Provisions AWS infra (VPC, ALB, ECS, RDS, ECR, CloudWatch Dashboard)
 Step 3: Builds Docker images (linux/amd64)
 Step 4: Pushes images to ECR
 Step 5: Runs db-init ECS task (loads schema + seed data)
 Step 6: Deploys 3 services to ECS Fargate
 Step 7: Waits for healthy deployment
-Step 8: Outputs ALB URL ✅
+Step 8: Outputs ALB URL + Dashboard URL ✅
 ```
 
 ### Destroy
@@ -183,9 +183,9 @@ https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashbo
 
 | Event | Trigger | Fields |
 |-------|---------|--------|
-| `ORDER_PENDING` | Order created | order_id, user_id, amount |
-| `ORDER_BOOKED` | Payment succeeded | order_id, user_id, amount |
-| `ORDER_FAILED` | Payment failed | order_id, user_id, amount, stripe_status |
+| `ORDER_PENDING` | Order created | order_id, user_id, amount, customer, email, reason |
+| `ORDER_BOOKED` | Payment succeeded | order_id, user_id, amount, customer, email, reason |
+| `ORDER_FAILED` | Payment failed | order_id, user_id, amount, reason, stripe_status |
 | `ORDER_ERROR` | Exception | order_id, error |
 
 ---

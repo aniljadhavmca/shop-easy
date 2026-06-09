@@ -82,7 +82,7 @@ Pass/word        ← has /
 9. Check the confirmation → **Next** → **Create access key**
 10. **Copy both keys** (you won't see the secret again)
 
-### Step 2: Add 3 GitHub Secrets
+### Step 2: Add 5 GitHub Secrets
 
 Go to: `https://github.com/<your-user>/shop-easy/settings/secrets/actions`
 
@@ -258,14 +258,14 @@ Use CloudWatch's built-in time range selector at the top of the dashboard:
 The order-service emits structured JSON logs:
 
 ```json
-{"timestamp":"2024-...","event":"ORDER_BOOKED","order_id":1,"user_id":"u1","amount":999.99}
-{"timestamp":"2024-...","event":"ORDER_FAILED","order_id":2,"user_id":"u1","amount":49.99,"stripe_status":"requires_payment_method"}
-{"timestamp":"2024-...","event":"ORDER_PENDING","order_id":3,"user_id":"u1","amount":149.99}
+{"timestamp":"2024-...","event":"ORDER_BOOKED","order_id":1,"user_id":"u1","amount":999.99,"customer":"John Doe","email":"john@test.com","reason":"Payment successful"}
+{"timestamp":"2024-...","event":"ORDER_FAILED","order_id":2,"user_id":"u1","amount":49.99,"reason":"Your card's security code is incorrect","stripe_status":"requires_payment_method"}
+{"timestamp":"2024-...","event":"ORDER_PENDING","order_id":3,"user_id":"u1","amount":149.99,"customer":"Jane Doe","email":"jane@test.com","reason":"Awaiting payment"}
 ```
 
 These are queryable via CloudWatch Logs Insights:
 ```
-SOURCE '/ecs/shop-easy' | filter event = 'ORDER_BOOKED' | stats sum(amount) as Revenue by bin(1h)
+SOURCE '/ecs/shop-easy' | filter @message like /ORDER_BOOKED/ | parse @message /"amount":(?<amt>[\d.]+)/ | stats sum(amt) as Revenue by bin(1h)
 ```
 
 ---
