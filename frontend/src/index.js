@@ -18,7 +18,7 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
     if (!stripe || !elements) return;
 
     if (!shipping.name || !shipping.email || !shipping.address) {
-      onError('Please fill all shipping details'); return;
+      onError('Please fill all shipping details', 'warning'); return;
     }
 
     setProcessing(true);
@@ -29,7 +29,7 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
         body: JSON.stringify({ user_id: USER_ID, shipping_name: shipping.name, shipping_email: shipping.email, shipping_address: shipping.address })
       });
       const order = await orderRes.json();
-      if (order.error) { onError(order.error); setProcessing(false); return; }
+      if (order.error) { onError(order.error, 'error'); setProcessing(false); return; }
 
       // 2. Create payment intent
       const intentRes = await fetch(`${API}/payments/create-intent`, {
@@ -37,7 +37,7 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
         body: JSON.stringify({ order_id: order.id })
       });
       const intentData = await intentRes.json();
-      if (intentData.error) { onError(intentData.error); setProcessing(false); return; }
+      if (intentData.error) { onError(intentData.error, 'error'); setProcessing(false); return; }
 
       // 3. Confirm card payment
       const { error, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
@@ -45,7 +45,7 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
       });
 
       if (error) {
-        onError(error.message); setProcessing(false); return;
+        onError(error.message, 'error'); setProcessing(false); return;
       }
 
       // 4. Confirm on backend
@@ -56,7 +56,7 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
 
       onSuccess();
     } catch (err) {
-      onError('Payment failed. Please try again.');
+      onError('Payment failed. Please try again.', 'error');
     }
     setProcessing(false);
   };
@@ -66,7 +66,7 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
       <div className="stripe-card-wrapper">
         <label>Card Details</label>
         <div className="stripe-card-element">
-          <CardElement options={{ style: { base: { fontSize: '16px', color: '#1a1a2e', '::placeholder': { color: '#9ca3af' } } } }} />
+          <CardElement options={{ hidePostalCode: true, style: { base: { fontSize: '16px', color: '#1a1a2e', '::placeholder': { color: '#9ca3af' } } } }} />
         </div>
         <p className="stripe-test-hint">Test card: 4242 4242 4242 4242 | Any future date | Any CVC</p>
       </div>
@@ -82,7 +82,7 @@ function App() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [notification, setNotification] = useState('');
+  const [notification, setNotification] = useState({ msg: '', type: '' });
   const [shipping, setShipping] = useState({ name: '', email: '', address: '' });
   const [activeFilter, setActiveFilter] = useState('All');
 
@@ -92,13 +92,13 @@ function App() {
   const fetchCart = () => fetch(`${API}/cart/${USER_ID}`).then(r => r.json()).then(setCart).catch(() => {});
   const fetchOrders = () => fetch(`${API}/orders/${USER_ID}`).then(r => r.json()).then(setOrders).catch(() => {});
 
-  const notify = (msg) => { setNotification(msg); setTimeout(() => setNotification(''), 3000); };
+  const notify = (msg, type = 'success') => { setNotification({ msg, type }); setTimeout(() => setNotification({ msg: '', type: '' }), 3000); };
 
   const addToCart = (productId) => {
     fetch(`${API}/cart`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: USER_ID, product_id: productId, quantity: 1 })
-    }).then(() => { fetchCart(); notify('✓ Added to cart!'); });
+    }).then(() => { fetchCart(); notify('✓ Added to cart!', 'success'); });
   };
 
   const removeFromCart = (id) => {
@@ -107,14 +107,14 @@ function App() {
 
   const handlePaymentSuccess = () => {
     fetchCart(); fetchOrders(); setShipping({ name: '', email: '', address: '' });
-    setPage('orders'); notify('🎉 Payment successful!');
+    setPage('orders'); notify('🎉 Payment successful!', 'success');
   };
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   return (
     <div className="app">
-      {notification && <div className="notification">{notification}</div>}
+      {notification.msg && <div className={`notification ${notification.type}`}>{notification.msg}</div>}
       
       <header className="header">
         <div className="header-inner">
@@ -254,7 +254,7 @@ function App() {
                 </div>
                 <Elements stripe={stripePromise}>
                   <CheckoutForm cart={cart} cartTotal={cartTotal} shipping={shipping}
-                    onSuccess={handlePaymentSuccess} onError={notify} />
+                    onSuccess={handlePaymentSuccess} onError={(msg, type) => notify(msg, type || 'error')} />
                 </Elements>
               </div>
               <div className="cart-summary">
