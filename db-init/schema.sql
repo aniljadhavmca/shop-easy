@@ -72,14 +72,15 @@ CREATE TABLE IF NOT EXISTS payments (
 INSERT IGNORE INTO users (id, email, name) VALUES
     (1, 'demo@shopeasy.com', 'Demo User');
 
-INSERT IGNORE INTO products (id, name, description, price, image, category, stock) VALUES
-    (1, 'MacBook Pro 14"', 'Apple M3 Pro chip, 18GB RAM, 512GB SSD', 1999.99, 'https://placehold.co/300x300/1a1a2e/ffffff?text=MacBook+Pro', 'Electronics', 25),
-    (2, 'Sony WH-1000XM5', 'Industry-leading noise cancelling headphones', 349.99, 'https://placehold.co/300x300/16213e/ffffff?text=Sony+XM5', 'Electronics', 80),
-    (3, 'Mechanical Keyboard', 'Cherry MX Brown switches, RGB backlit', 129.99, 'https://placehold.co/300x300/0f3460/ffffff?text=Keyboard', 'Accessories', 150),
-    (4, '4K Monitor 27"', 'IPS panel, 144Hz refresh rate, USB-C', 599.99, 'https://placehold.co/300x300/533483/ffffff?text=4K+Monitor', 'Electronics', 40),
-    (5, 'Wireless Mouse', 'Ergonomic design, 4000 DPI sensor', 59.99, 'https://placehold.co/300x300/e94560/ffffff?text=Mouse', 'Accessories', 200),
-    (6, 'USB-C Hub', '7-in-1 adapter with HDMI, SD card reader', 49.99, 'https://placehold.co/300x300/0f3460/ffffff?text=USB-C+Hub', 'Accessories', 300),
-    (7, 'Webcam HD 1080p', 'Auto-focus, built-in microphone, privacy cover', 79.99, 'https://placehold.co/300x300/1a1a2e/ffffff?text=Webcam', 'Electronics', 120),
-    (8, 'Standing Desk Mat', 'Anti-fatigue ergonomic comfort mat', 39.99, 'https://placehold.co/300x300/16213e/ffffff?text=Desk+Mat', 'Office', 250),
-    (9, 'Laptop Stand', 'Adjustable aluminum stand, heat dissipation', 44.99, 'https://placehold.co/300x300/533483/ffffff?text=Laptop+Stand', 'Accessories', 180),
-    (10, 'Noise Machine', 'White noise, nature sounds, sleep timer', 29.99, 'https://placehold.co/300x300/e94560/ffffff?text=Noise+Machine', 'Office', 90);
+INSERT INTO products (id, name, description, price, image, category, stock) VALUES
+    (1, 'MacBook Pro 14"', 'Apple M3 Pro chip, 18GB RAM, 512GB SSD', 1999.99, 'https://cdn.dummyjson.com/product-images/laptops/apple-macbook-pro-14-inch-space-grey/thumbnail.webp', 'Electronics', 25),
+    (2, 'Sony WH-1000XM5', 'Industry-leading noise cancelling headphones', 349.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods-max-silver/thumbnail.webp', 'Electronics', 80),
+    (3, 'Mechanical Keyboard', 'Cherry MX Brown switches, RGB backlit', 129.99, 'https://cdn.dummyjson.com/product-images/laptops/asus-zenbook-pro-dual-screen-laptop/thumbnail.webp', 'Accessories', 150),
+    (4, '4K Monitor 27"', 'IPS panel, 144Hz refresh rate, USB-C', 599.99, 'https://cdn.dummyjson.com/product-images/laptops/new-dell-xps-13-9300-laptop/thumbnail.webp', 'Electronics', 40),
+    (5, 'Wireless Mouse', 'Ergonomic design, 4000 DPI sensor', 59.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpower-wireless-charger/thumbnail.webp', 'Accessories', 200),
+    (6, 'USB-C Hub', '7-in-1 adapter with HDMI, SD card reader', 49.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-magsafe-battery-pack/thumbnail.webp', 'Accessories', 300),
+    (7, 'Webcam HD 1080p', 'Auto-focus, built-in microphone, privacy cover', 79.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/tv-studio-camera-pedestal/thumbnail.webp', 'Electronics', 120),
+    (8, 'Standing Desk Mat', 'Anti-fatigue ergonomic comfort mat', 39.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/selfie-lamp-with-iphone/thumbnail.webp', 'Office', 250),
+    (9, 'Laptop Stand', 'Adjustable aluminum stand, heat dissipation', 44.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/monopod/thumbnail.webp', 'Accessories', 180),
+    (10, 'Noise Machine', 'White noise, nature sounds, sleep timer', 29.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-homepod-mini-cosmic-grey/thumbnail.webp', 'Office', 90)
+ON DUPLICATE KEY UPDATE image = VALUES(image), name = VALUES(name), description = VALUES(description), price = VALUES(price), category = VALUES(category), stock = VALUES(stock);
