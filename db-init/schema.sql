@@ -74,13 +74,13 @@ INSERT IGNORE INTO users (id, email, name) VALUES
 
 INSERT INTO products (id, name, description, price, image, category, stock) VALUES
     (1, 'MacBook Pro 14"', 'Apple M3 Pro chip, 18GB RAM, 512GB SSD', 1999.99, 'https://cdn.dummyjson.com/product-images/laptops/apple-macbook-pro-14-inch-space-grey/thumbnail.webp', 'Electronics', 25),
-    (2, 'Sony WH-1000XM5', 'Industry-leading noise cancelling headphones', 349.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods-max-silver/thumbnail.webp', 'Electronics', 80),
-    (3, 'Mechanical Keyboard', 'Cherry MX Brown switches, RGB backlit', 129.99, 'https://cdn.dummyjson.com/product-images/laptops/asus-zenbook-pro-dual-screen-laptop/thumbnail.webp', 'Accessories', 150),
-    (4, '4K Monitor 27"', 'IPS panel, 144Hz refresh rate, USB-C', 599.99, 'https://cdn.dummyjson.com/product-images/laptops/new-dell-xps-13-9300-laptop/thumbnail.webp', 'Electronics', 40),
-    (5, 'Wireless Mouse', 'Ergonomic design, 4000 DPI sensor', 59.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpower-wireless-charger/thumbnail.webp', 'Accessories', 200),
-    (6, 'USB-C Hub', '7-in-1 adapter with HDMI, SD card reader', 49.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-magsafe-battery-pack/thumbnail.webp', 'Accessories', 300),
-    (7, 'Webcam HD 1080p', 'Auto-focus, built-in microphone, privacy cover', 79.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/tv-studio-camera-pedestal/thumbnail.webp', 'Electronics', 120),
-    (8, 'Standing Desk Mat', 'Anti-fatigue ergonomic comfort mat', 39.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/selfie-lamp-with-iphone/thumbnail.webp', 'Office', 250),
-    (9, 'Laptop Stand', 'Adjustable aluminum stand, heat dissipation', 44.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/monopod/thumbnail.webp', 'Accessories', 180),
-    (10, 'Noise Machine', 'White noise, nature sounds, sleep timer', 29.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-homepod-mini-cosmic-grey/thumbnail.webp', 'Office', 90)
+    (2, 'AirPods Max', 'Premium over-ear noise cancelling headphones', 549.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods-max-silver/thumbnail.webp', 'Electronics', 80),
+    (3, 'Dell XPS 13', 'Intel i7, 16GB RAM, 13.4" InfinityEdge display', 1299.99, 'https://cdn.dummyjson.com/product-images/laptops/new-dell-xps-13-9300-laptop/thumbnail.webp', 'Electronics', 150),
+    (4, 'iPhone 13 Pro', 'A15 Bionic, ProMotion display, 128GB', 999.99, 'https://cdn.dummyjson.com/product-images/smartphones/iphone-13-pro/thumbnail.webp', 'Electronics', 40),
+    (5, 'Apple AirPods', 'Wireless earbuds with charging case', 129.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods/thumbnail.webp', 'Accessories', 200),
+    (6, 'Apple Watch Series 4', 'GPS, heart rate monitor, 44mm gold aluminum', 399.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-watch-series-4-gold/thumbnail.webp', 'Accessories', 300),
+    (7, 'Amazon Echo Plus', 'Smart speaker with Alexa, premium sound', 79.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/amazon-echo-plus/thumbnail.webp', 'Electronics', 120),
+    (8, 'HomePod Mini', 'Compact smart speaker, Siri built-in', 99.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-homepod-mini-cosmic-grey/thumbnail.webp', 'Electronics', 250),
+    (9, 'Wireless Charger', 'Fast charging pad, Qi compatible', 29.99, 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpower-wireless-charger/thumbnail.webp', 'Accessories', 180),
+    (10, 'Lenovo Yoga 920', '2-in-1 convertible, i7, 14" 4K touchscreen', 1399.99, 'https://cdn.dummyjson.com/product-images/laptops/lenovo-yoga-920/thumbnail.webp', 'Electronics', 90)
 ON DUPLICATE KEY UPDATE image = VALUES(image), name = VALUES(name), description = VALUES(description), price = VALUES(price), category = VALUES(category), stock = VALUES(stock);
