@@ -86,6 +86,26 @@ app.post('/payments/create-intent', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Stripe: Log Failed Payment (called by frontend on card error) ───
+app.post('/payments/failed', async (req, res) => {
+  try {
+    const { order_id, reason } = req.body;
+    const [order] = await pool.query('SELECT * FROM orders WHERE id = ?', [order_id]);
+    if (!order.length) return res.status(404).json({ error: 'Order not found' });
+
+    await pool.query(
+      'INSERT INTO payments (order_id, amount, status, method) VALUES (?, ?, "failed", "stripe")',
+      [order_id, order[0].total]
+    );
+    await pool.query('UPDATE orders SET status = "failed" WHERE id = ?', [order_id]);
+    log('ORDER_FAILED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total), customer: order[0].shipping_name, email: order[0].shipping_email, reason });
+    res.json({ status: 'failed' });
+  } catch (e) {
+    log('ORDER_ERROR', { order_id: req.body.order_id, error: e.message });
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Stripe: Confirm Payment ───
 app.post('/payments/confirm', async (req, res) => {
   try {

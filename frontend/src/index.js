@@ -45,6 +45,11 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
       });
 
       if (error) {
+        // Report failure to backend for CloudWatch logging
+        await fetch(`${API}/payments/failed`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: order.id, reason: error.message })
+        });
         onError(error.message, 'error'); setProcessing(false); return;
       }
 
