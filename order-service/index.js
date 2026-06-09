@@ -5,6 +5,9 @@ const Stripe = require('stripe');
 const app = express();
 app.use(express.json());
 
+// Structured logging for CloudWatch Logs Insights
+const log = (event, data) => console.log(JSON.stringify({ timestamp: new Date().toISOString(), event, ...data }));
+
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
 
 let pool;
@@ -56,9 +59,11 @@ app.post('/orders', async (req, res) => {
       await conn.query('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.product_id]);
     }
     await conn.commit();
+    log('ORDER_PENDING', { order_id: order.insertId, user_id, amount: total });
     res.status(201).json({ id: order.insertId, total, status: 'pending' });
   } catch (e) {
     await conn.rollback();
+    log('ORDER_ERROR', { user_id, error: e.message });
     res.status(500).json({ error: e.message });
   } finally { conn.release(); }
 });
@@ -96,17 +101,21 @@ app.post('/payments/confirm', async (req, res) => {
         [order_id, order[0].total]
       );
       await pool.query('UPDATE orders SET status = "paid" WHERE id = ?', [order_id]);
-      // Clear cart only after successful payment
       await pool.query('DELETE FROM cart_items WHERE user_id = ?', [order[0].user_id]);
+      log('ORDER_BOOKED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total) });
       res.json({ status: 'completed', amount: order[0].total });
     } else {
       await pool.query(
         'INSERT INTO payments (order_id, amount, status, method) VALUES (?, ?, "failed", "stripe")',
         [order_id, order[0].total]
       );
+      log('ORDER_FAILED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total), stripe_status: paymentIntent.status });
       res.status(400).json({ status: 'failed', stripe_status: paymentIntent.status });
     }
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    log('ORDER_ERROR', { order_id: req.body.order_id, error: e.message });
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─── Legacy payment endpoint (fallback) ───
