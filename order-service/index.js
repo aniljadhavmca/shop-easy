@@ -59,7 +59,7 @@ app.post('/orders', async (req, res) => {
       await conn.query('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.product_id]);
     }
     await conn.commit();
-    log('ORDER_PENDING', { order_id: order.insertId, user_id, amount: total });
+    log('ORDER_PENDING', { order_id: order.insertId, user_id, amount: total, customer: shipping_name, email: shipping_email });
     res.status(201).json({ id: order.insertId, total, status: 'pending' });
   } catch (e) {
     await conn.rollback();
@@ -102,7 +102,7 @@ app.post('/payments/confirm', async (req, res) => {
       );
       await pool.query('UPDATE orders SET status = "paid" WHERE id = ?', [order_id]);
       await pool.query('DELETE FROM cart_items WHERE user_id = ?', [order[0].user_id]);
-      log('ORDER_BOOKED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total) });
+      log('ORDER_BOOKED', { order_id, user_id: order[0].user_id, amount: parseFloat(order[0].total), customer: order[0].shipping_name, email: order[0].shipping_email });
       res.json({ status: 'completed', amount: order[0].total });
     } else {
       await pool.query(
