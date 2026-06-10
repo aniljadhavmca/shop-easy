@@ -79,7 +79,8 @@ app.post('/payments/create-intent', async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(order[0].total * 100), // cents
       currency: 'usd',
-      metadata: { order_id: String(order_id) },
+      receipt_email: order[0].shipping_email,
+      metadata: { order_id: String(order_id), customer: order[0].shipping_name, email: order[0].shipping_email },
     });
 
     res.json({ clientSecret: paymentIntent.client_secret });
