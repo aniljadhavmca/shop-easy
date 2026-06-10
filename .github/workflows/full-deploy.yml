@@ -94,11 +94,19 @@ jobs:
           aws ecs update-service --cluster $PROJECT-cluster --service frontend --force-new-deployment
 
       - name: ⏳ Wait for Stable
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: ✅ Verify Deployment
         run: |
           aws ecs wait services-stable --cluster $PROJECT-cluster \
             --services product-service order-service frontend
           echo "### 🚀 Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "**App URL:** http://$ALB_DNS" >> $GITHUB_STEP_SUMMARY
+          echo "**Dashboard:** https://${{ env.AWS_REGION }}.console.aws.amazon.com/cloudwatch/home?region=${{ env.AWS_REGION }}#dashboards:name=$PROJECT-orders" >> $GITHUB_STEP_SUMMARY
 
   destroy:
     name: 💣 Destroy Everything

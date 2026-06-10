@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS orders (
     shipping_name VARCHAR(255),
     shipping_email VARCHAR(255),
     shipping_address TEXT,
-    status ENUM('pending','paid','shipped','delivered','cancelled') DEFAULT 'pending',
+    status ENUM('pending','paid','failed','shipped','delivered','cancelled') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -47,6 +47,9 @@ SET @sql = IF(@col_exists = 0, 'ALTER TABLE orders ADD COLUMN shipping_name VARC
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Add 'failed' to status ENUM if not present (idempotent)
+ALTER TABLE orders MODIFY COLUMN status ENUM('pending','paid','failed','shipped','delivered','cancelled') DEFAULT 'pending';
 
 CREATE TABLE IF NOT EXISTS order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
