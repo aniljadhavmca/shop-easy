@@ -6,11 +6,11 @@
 
 ## Architecture
 
-![Shop Easy Architecture](https://raw.githubusercontent.com/aniljadhavmca/shop-easy/main/docs/AWS_ECS_Microservices_Architecture.png)
+![Shop Easy Architecture](https://raw.githubusercontent.com/aniljadhavmca/shop-easy/feature/stripe-monitoring/docs/AWS_ECS_Microservices_Architecture.png)
 
 ### Live Demo Screenshot
 
-![Shop Easy Screenshot](https://raw.githubusercontent.com/aniljadhavmca/shop-easy/main/docs/livedemo.png)
+![Shop Easy Screenshot](https://raw.githubusercontent.com/aniljadhavmca/shop-easy/feature/stripe-monitoring/docs/livedemo.png)
 
 ### End-to-End Flow
 
@@ -175,6 +175,8 @@ Auto-provisioned via Terraform — accessible at:
 ```
 https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=shop-easy-orders
 ```
+
+![Sales Dashboard](https://raw.githubusercontent.com/aniljadhavmca/shop-easy/feature/stripe-monitoring/docs/dashboard.png)
 
 ### Dashboard Panels
 
