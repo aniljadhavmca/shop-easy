@@ -67,7 +67,7 @@ nav button.active { background: rgba(233,69,96,0.9); color: white; border-color:
 .product-card {
   background: white; border-radius: 16px; overflow: hidden;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.04); cursor: pointer;
 }
 .product-card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.12); }
 .product-image { position: relative; overflow: hidden; aspect-ratio: 1/1; background: #f9fafb; }
