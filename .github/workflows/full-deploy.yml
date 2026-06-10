@@ -35,13 +35,12 @@ jobs:
 
       - name: 🪣 Create S3 Bucket for Terraform State
         run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          export TF_STATE_BUCKET="shop-easy-tf-state-${ACCOUNT_ID}"
+          echo "TF_STATE_BUCKET=$TF_STATE_BUCKET" >> $GITHUB_ENV
           if ! aws s3api head-bucket --bucket $TF_STATE_BUCKET 2>/dev/null; then
-            echo "Creating bucket..."
-            for i in 1 2 3; do
-              aws s3 mb s3://$TF_STATE_BUCKET --region $AWS_REGION && break
-              echo "Retry $i... waiting 10s"
-              sleep 10
-            done
+            echo "Creating bucket $TF_STATE_BUCKET..."
+            aws s3 mb s3://$TF_STATE_BUCKET --region $AWS_REGION
           fi
           aws s3api put-bucket-versioning --bucket $TF_STATE_BUCKET \
             --versioning-configuration Status=Enabled
@@ -54,7 +53,7 @@ jobs:
       - name: 🏗️ Provision Infrastructure
         working-directory: terraform
         run: |
-          terraform init
+          terraform init -backend-config="bucket=$TF_STATE_BUCKET"
           terraform apply -auto-approve \
             -var="db_password=${{ secrets.DB_PASSWORD }}" \
             -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}"
@@ -137,7 +136,10 @@ jobs:
       - name: 💣 Destroy Infrastructure
         working-directory: terraform
         run: |
-          terraform init
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          export TF_STATE_BUCKET="shop-easy-tf-state-${ACCOUNT_ID}"
+          echo "TF_STATE_BUCKET=$TF_STATE_BUCKET" >> $GITHUB_ENV
+          terraform init -backend-config="bucket=$TF_STATE_BUCKET"
           terraform destroy -auto-approve \
             -var="db_password=${{ secrets.DB_PASSWORD }}" \
             -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}"
