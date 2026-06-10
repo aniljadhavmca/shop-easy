@@ -175,6 +175,41 @@ nav button.active { background: rgba(233,69,96,0.9); color: white; border-color:
 .status-badge.failed { background: #fee2e2; color: #991b1b; }
 .status-badge.shipped { background: #dbeafe; color: #1e40af; }
 
+/* ─── Product Modal ─── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-content {
+  background: white; border-radius: 20px; max-width: 700px; width: 100%;
+  max-height: 90vh; overflow-y: auto; position: relative;
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-close {
+  position: absolute; top: 16px; right: 16px; background: #f3f4f6;
+  border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+  font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+  z-index: 10; transition: background 0.2s;
+}
+.modal-close:hover { background: #e5e7eb; }
+.modal-body { display: grid; grid-template-columns: 1fr 1fr; }
+.modal-image { background: #f9fafb; display: flex; align-items: center; justify-content: center; padding: 24px; border-radius: 20px 0 0 20px; }
+.modal-image img { width: 100%; max-height: 350px; object-fit: contain; }
+.modal-details { padding: 32px 28px; display: flex; flex-direction: column; gap: 12px; }
+.modal-details h2 { font-size: 1.4rem; font-weight: 700; }
+.modal-description { color: #4b5563; font-size: 0.95rem; line-height: 1.6; }
+.modal-meta { margin-top: 8px; }
+.modal-stock { font-size: 0.85rem; font-weight: 500; color: #059669; }
+.modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 16px; border-top: 1px solid #f3f4f6; }
+@media (max-width: 600px) {
+  .modal-body { grid-template-columns: 1fr; }
+  .modal-image { border-radius: 20px 20px 0 0; max-height: 250px; }
+  .modal-details { padding: 20px; }
+}
+
 /* ─── Footer ─── */
 .footer { background: #1a1a2e; color: white; margin-top: auto; }
 .footer-inner { max-width: 1200px; margin: 0 auto; padding: 48px 24px; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; }
@@ -186,3 +221,43 @@ nav button.active { background: rgba(233,69,96,0.9); color: white; border-color:
 .footer-links a:hover { color: white; }
 .footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding: 20px 24px; text-align: center; }
 .footer-bottom p { color: rgba(255,255,255,0.4); font-size: 0.8rem; }
+
+/* ─── Mobile Responsive ─── */
+@media (max-width: 768px) {
+  .header-inner { height: 60px; }
+  .logo-text { font-size: 1.1rem; }
+  nav button { padding: 8px 12px; font-size: 0.8rem; }
+  nav button span { display: none; }
+  .hero { padding: 48px 16px; }
+  .hero-content h1 { font-size: 1.8rem; }
+  .hero-content p { font-size: 0.95rem; }
+  .products-section { padding: 0 16px 40px; }
+  .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+  .product-info { padding: 12px; }
+  .product-info h3 { font-size: 0.9rem; }
+  .description { font-size: 0.75rem; -webkit-line-clamp: 1; }
+  .amount { font-size: 1.2rem; }
+  .add-btn { padding: 8px 12px; font-size: 0.78rem; }
+  .page-container { margin: 20px auto; padding: 0 16px; }
+  .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .filter-bar { gap: 6px; }
+  .filter-btn { padding: 6px 14px; font-size: 0.8rem; }
+  .order-top { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .order-right { align-self: flex-end; }
+  .footer-inner { padding: 32px 16px; gap: 24px; }
+  .notification { top: 10px; right: 10px; left: 10px; text-align: center; padding: 12px 16px; font-size: 0.85rem; }
+}
+
+@media (max-width: 480px) {
+  nav { gap: 4px; }
+  nav button { padding: 7px 10px; font-size: 0.75rem; }
+  .hero-content h1 { font-size: 1.5rem; }
+  .products-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .product-image { aspect-ratio: 1/1; }
+  .product-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .add-btn { width: 100%; text-align: center; }
+  .cart-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .cart-item-img { width: 100%; height: 120px; }
+  .cart-item-actions { align-self: flex-end; }
+  .checkout-form { padding: 16px; }
+}

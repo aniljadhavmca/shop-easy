@@ -90,6 +90,7 @@ function App() {
   const [notification, setNotification] = useState({ msg: '', type: '' });
   const [shipping, setShipping] = useState({ name: '', email: '', address: '' });
   const [activeFilter, setActiveFilter] = useState('All');
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   useEffect(() => { fetchProducts(); fetchCart(); }, []);
 
@@ -120,6 +121,37 @@ function App() {
   return (
     <div className="app">
       {notification.msg && <div className={`notification ${notification.type}`}>{notification.msg}</div>}
+
+      {selectedProduct && (
+        <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setSelectedProduct(null)}>✕</button>
+            <div className="modal-body">
+              <div className="modal-image">
+                <img src={selectedProduct.image} alt={selectedProduct.name} />
+              </div>
+              <div className="modal-details">
+                <span className="category">{selectedProduct.category}</span>
+                <h2>{selectedProduct.name}</h2>
+                <p className="modal-description">{selectedProduct.description}</p>
+                <div className="modal-meta">
+                  <span className="modal-stock">{selectedProduct.stock > 0 ? `✓ ${selectedProduct.stock} in stock` : '✕ Out of stock'}</span>
+                </div>
+                <div className="modal-footer">
+                  <div className="price-tag">
+                    <span className="currency">$</span>
+                    <span className="amount">{Math.floor(selectedProduct.price)}</span>
+                    <span className="cents">.{(selectedProduct.price % 1).toFixed(2).slice(2)}</span>
+                  </div>
+                  <button className="add-btn" onClick={() => { addToCart(selectedProduct.id); setSelectedProduct(null); }} disabled={selectedProduct.stock === 0}>
+                    {selectedProduct.stock === 0 ? 'Sold Out' : '🛒 Add to Cart'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <header className="header">
         <div className="header-inner">
@@ -163,7 +195,7 @@ function App() {
               </div>
               <div className="products-grid">
                 {products.filter(p => activeFilter === 'All' || p.category === activeFilter).map(p => (
-                  <div key={p.id} className="product-card">
+                  <div key={p.id} className="product-card" onClick={() => setSelectedProduct(p)}>
                     <div className="product-image">
                       <img src={p.image} alt={p.name} />
                       {p.stock < 10 && <span className="low-stock">Few left</span>}
@@ -178,7 +210,7 @@ function App() {
                           <span className="amount">{Math.floor(p.price)}</span>
                           <span className="cents">.{(p.price % 1).toFixed(2).slice(2)}</span>
                         </div>
-                        <button className="add-btn" onClick={() => addToCart(p.id)} disabled={p.stock === 0}>
+                        <button className="add-btn" onClick={(e) => { e.stopPropagation(); addToCart(p.id); }} disabled={p.stock === 0}>
                           {p.stock === 0 ? 'Sold Out' : '+ Add'}
                         </button>
                       </div>
