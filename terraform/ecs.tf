@@ -34,6 +34,7 @@ resource "aws_ecs_task_definition" "product" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name  = "product-service"
@@ -57,11 +58,12 @@ resource "aws_ecs_task_definition" "product" {
 }
 
 resource "aws_ecs_service" "product" {
-  name            = "product-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.product.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  name                   = "product-service"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.product.arn
+  desired_count          = 1
+  launch_type            = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
     subnets          = aws_subnet.private[*].id
@@ -84,6 +86,7 @@ resource "aws_ecs_task_definition" "order" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name  = "order-service"
@@ -108,11 +111,12 @@ resource "aws_ecs_task_definition" "order" {
 }
 
 resource "aws_ecs_service" "order" {
-  name            = "order-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.order.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  name                   = "order-service"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.order.arn
+  desired_count          = 1
+  launch_type            = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
     subnets          = aws_subnet.private[*].id
@@ -135,6 +139,7 @@ resource "aws_ecs_task_definition" "frontend" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name  = "frontend"
@@ -152,11 +157,12 @@ resource "aws_ecs_task_definition" "frontend" {
 }
 
 resource "aws_ecs_service" "frontend" {
-  name            = "frontend"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  name                   = "frontend"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.frontend.arn
+  desired_count          = 1
+  launch_type            = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
     subnets          = aws_subnet.private[*].id

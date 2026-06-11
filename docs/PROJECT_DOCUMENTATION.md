@@ -712,7 +712,7 @@ aws ecs execute-command --cluster shop-easy-cluster \
 
 ## Connecting to Private ECS Tasks (Debugging)
 
-Since all ECS services run in **private subnets** with no public IPs, you can't SSH into them directly. Use **ECS Exec** — AWS's built-in remote shell for Fargate.
+All ECS services run in **private subnets** with no public IPs. Use **ECS Exec** — AWS's built-in remote shell for Fargate (already enabled in this project).
 
 ### How It Works
 
@@ -722,73 +722,36 @@ Your Laptop → AWS CLI → SSM Session Manager → NAT Gateway → ECS Task (pr
 
 No bastion host, no SSH keys, no open ports. All via AWS APIs + IAM.
 
-### Prerequisites
+### Prerequisites (on your laptop)
 
-1. Add `enable_execute_command = true` to ECS services in Terraform
-2. Add a **task role** (not execution role) with SSM permissions
-3. Install [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) on your laptop
+1. AWS CLI v2 installed
+2. [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) installed
 
-### Terraform Changes Required
+### What's Enabled in Terraform
 
-**ecs.tf** — enable on each service:
-```hcl
-resource "aws_ecs_service" "order" {
-  ...
-  enable_execute_command = true
-}
-```
-
-**iam.tf** — add task role:
-```hcl
-resource "aws_iam_role" "ecs_task" {
-  name = "${var.project}-ecs-task"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_ssm" {
-  role       = aws_iam_role.ecs_task.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-```
-
-**Task definitions** — add task role:
-```hcl
-resource "aws_ecs_task_definition" "order" {
-  ...
-  execution_role_arn = aws_iam_role.ecs_execution.arn
-  task_role_arn      = aws_iam_role.ecs_task.arn  # ← Add this
-}
-```
+- `enable_execute_command = true` on all 3 ECS services
+- Task role (`shop-easy-ecs-task`) with `AmazonSSMManagedInstanceCore` policy
+- NAT Gateway allows SSM HTTPS outbound from private subnets
 
 ### Usage
 
 ```bash
 # 1. Find task ID
 aws ecs list-tasks --cluster shop-easy-cluster --service-name order-service
+# Output: arn:aws:ecs:us-east-1:123456789:task/shop-easy-cluster/abc123
 
 # 2. Connect to container shell
 aws ecs execute-command \
   --cluster shop-easy-cluster \
-  --task <task-id> \
+  --task abc123 \
   --container order-service \
   --interactive \
   --command "/bin/sh"
 
-# 3. Now you're inside the container — debug freely
-ls
-env
-curl http://localhost:4002/health
-node -e "console.log('hello')"
+# 3. You're inside the private container!
 ```
 
-### Common Debugging Commands Inside Container
+### Common Debugging Commands
 
 ```bash
 # Check environment variables
@@ -797,11 +760,11 @@ env | grep DB
 # Test DB connectivity
 node -e "const m=require('mysql2/promise'); m.createConnection({host:process.env.DB_HOST,user:'admin',password:process.env.DB_PASSWORD,database:'shop_easy'}).then(c=>c.query('SELECT COUNT(*) as n FROM products').then(r=>{console.log(r[0]);c.end()}))"
 
-# Check outbound connectivity (Stripe, ECR)
+# Check outbound connectivity (Stripe API via NAT)
 curl -s https://api.stripe.com/v1 -o /dev/null -w "%{http_code}"
 
-# Check logs
-cat /proc/1/fd/1  # stdout of main process
+# Check health endpoint
+curl http://localhost:4002/health
 ```
 
 ### Why ECS Exec Over a Bastion?
@@ -812,7 +775,7 @@ cat /proc/1/fd/1  # stdout of main process
 | Security | SSH port open, key mgmt | No open ports, IAM-based |
 | Maintenance | Patch OS, rotate keys | Zero |
 | Audit | Manual | CloudTrail logs every session |
-| Setup | VPC + SG + EC2 + keys | 15 lines of Terraform |
+| Setup | VPC + SG + EC2 + keys | Task role + 1 flag |
 
 ---
 
