@@ -6,19 +6,26 @@
 
 ## 🔧 DevOps / Infrastructure Questions
 
-### Q1: ECS tasks are in public subnets but there's no NAT Gateway. How do containers pull images from ECR and call Stripe API?
+### Q1: ECS tasks are in private subnets with no public IPs. How do containers pull images from ECR and call Stripe API?
 
-**A:** ECS tasks have `assign_public_ip = true` in the network configuration. They route outbound traffic directly through the Internet Gateway. No NAT needed. Security is maintained because the ECS security group only allows inbound from the ALB security group — so random internet traffic can't reach the containers.
+**A:** A NAT Gateway in the public subnet provides outbound-only internet access for the private subnets. ECS tasks route outbound traffic through the NAT Gateway → Internet Gateway. Inbound traffic from users comes through ALB only. This is the proper production pattern.
 
 ```hcl
+# Private subnet route table
+route {
+  cidr_block     = "0.0.0.0/0"
+  nat_gateway_id = aws_nat_gateway.main.id  # ← Outbound via NAT
+}
+
+# ECS in private subnets, no public IP
 network_configuration {
-  subnets          = aws_subnet.public[*].id
+  subnets          = aws_subnet.private[*].id
   security_groups  = [aws_security_group.ecs.id]
-  assign_public_ip = true  # ← This is the trick
+  assign_public_ip = false
 }
 ```
 
-**Cost saved:** ~$32/month (NAT Gateway = $0.045/hr + data processing fees).
+**Cost:** ~$32/month for NAT Gateway, but provides proper network isolation.
 
 ---
 

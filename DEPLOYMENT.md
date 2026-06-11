@@ -187,10 +187,10 @@ for svc in product-service order-service frontend db-init; do
 done
 
 # 5. Run DB migration
-SUBNET=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=shop-easy-public-1 --query 'Subnets[0].SubnetId' --output text)
+SUBNET=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=shop-easy-private-1 --query 'Subnets[0].SubnetId' --output text)
 SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=shop-easy-ecs-sg --query 'SecurityGroups[0].GroupId' --output text)
 aws ecs run-task --cluster shop-easy-cluster --task-definition shop-easy-db-init \
-  --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$SUBNET],securityGroups=[$SG],assignPublicIp=ENABLED}"
+  --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$SUBNET],securityGroups=[$SG],assignPublicIp=DISABLED}"
 
 # 6. Deploy services
 aws ecs update-service --cluster shop-easy-cluster --service product-service --force-new-deployment
@@ -225,7 +225,8 @@ aws elbv2 describe-load-balancers --names shop-easy-alb --query 'LoadBalancers[0
 | Decision | Reason |
 |----------|--------|
 | 3 services (not 4-5) | Fewer Fargate tasks, lower cost, stays under sandbox limits |
-| No NAT Gateway | ECS in public subnets with `assign_public_ip` — saves $32/mo |
+| NAT Gateway | ECS in private subnets — proper security, no public IPs on services |
+| ECS in private subnets | No direct internet exposure — outbound via NAT only |
 | RDS private | Secure — only ECS security group can access port 3306 |
 | DB init via ECS task | Schema loaded internally — no need to expose RDS publicly |
 | S3 state auto-created | Zero manual prerequisites — truly 1-click |
@@ -279,14 +280,15 @@ SOURCE '/ecs/shop-easy' | filter @message like /ORDER_BOOKED/ | parse @message /
 
 ---
 
-## Cost: ~$57/month
+## Cost: ~$89/month
 
 | Resource | Monthly |
 |----------|---------|
 | ECS Fargate (3 × 0.25 vCPU, 512MB) | ~$25 |
+| NAT Gateway | ~$32 |
 | RDS db.t3.micro | ~$15 |
 | ALB | ~$16 |
 | ECR + S3 | ~$1 |
-| **Total** | **~$57** |
+| **Total** | **~$89** |
 
 > 💡 Run the `destroy` action when not using to stop all charges.

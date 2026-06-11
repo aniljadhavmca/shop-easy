@@ -551,19 +551,18 @@ ECS awslogs driver sends container stdout as a flat string in `@message`. CloudW
 ### No NAT Gateway — How It Works
 
 ```
-Traditional (expensive):
-  ECS (private subnet) → NAT Gateway ($32/mo) → IGW → Internet
-
-Our approach (free):
-  ECS (public subnet + assign_public_ip=true) → IGW → Internet
+Proper production architecture:
+  ECS (private subnet) → NAT Gateway → IGW → Internet
+  RDS (private subnet) → No internet access needed
 ```
 
-**Why it's still secure:**
-- ECS security group blocks ALL inbound except from ALB
-- Only ALB has inbound from 0.0.0.0/0
+**Why it's secure:**
+- ECS tasks have NO public IPs — completely private
+- Only outbound traffic allowed via NAT (ECR pulls, Stripe API)
+- ALB is the ONLY internet-facing resource
 - RDS has no public IP + security group allows only ECS
 
-**Trade-off:** ECS tasks get public IPs, but they're protected by security groups. Acceptable for non-sensitive workloads.
+**Cost:** NAT Gateway adds ~$32/month but provides proper network isolation.
 
 ### Secrets Management
 

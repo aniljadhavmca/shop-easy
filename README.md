@@ -118,7 +118,7 @@ Test card: `4242 4242 4242 4242` | Any future expiry | Any CVC
 | Payments | Stripe (test mode) |
 | Monitoring | CloudWatch Dashboard + Logs Insights |
 | Containers | Docker, ECS Fargate |
-| Networking | VPC, ALB (no NAT) |
+| Networking | VPC, ALB, NAT Gateway |
 | Registry | Amazon ECR |
 | State | S3 (auto-created) |
 | IaC | Terraform |
@@ -155,17 +155,18 @@ shop-easy/
 
 ---
 
-## Cost (~$57/month)
+## Cost (~$89/month)
 
 | Resource | Cost |
 |----------|------|
 | ECS Fargate (3 tasks) | ~$25 |
+| NAT Gateway | ~$32 |
 | RDS db.t3.micro | ~$15 |
 | ALB | ~$16 |
 | ECR + S3 | ~$1 |
-| **Total** | **~$57/month** |
+| **Total** | **~$89/month** |
 
-> No NAT Gateway = saves $32/month vs typical setups.
+> NAT Gateway enables proper private subnet architecture for ECS services.
 
 ---
 
@@ -205,8 +206,11 @@ https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashbo
 
 ## Security
 
-- RDS is **private** (`publicly_accessible = false`) — only ECS can reach it
-- ECS tasks in public subnets with security group locked to ALB traffic only
+- ECS tasks in **private subnets** — no public IPs, no direct internet exposure
+- RDS in **private subnets** (`publicly_accessible = false`) — only ECS can reach it
+- NAT Gateway provides outbound-only internet access (ECR pulls, Stripe API)
+- ALB is the only internet-facing resource (public subnets, port 80)
+- ECS security group allows inbound only from ALB
 - DB password stored as GitHub Secret — never in code
 - Stripe keys stored as GitHub Secrets — never in code
 - Terraform state encrypted in S3 with versioning
