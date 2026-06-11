@@ -82,11 +82,13 @@ jobs:
 
       - name: 🗄️ Run Database Migration
         run: |
+          PRIVATE_SUBNET=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=$PROJECT-private-1 --query 'Subnets[0].SubnetId' --output text)
+          ECS_SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=$PROJECT-ecs-sg --query 'SecurityGroups[0].GroupId' --output text)
           TASK_ARN=$(aws ecs run-task \
             --cluster $PROJECT-cluster \
             --task-definition $PROJECT-db-init \
             --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[$(aws ec2 describe-subnets --filters Name=tag:Name,Values=$PROJECT-public-1 --query 'Subnets[0].SubnetId' --output text)],securityGroups=[$(aws ec2 describe-security-groups --filters Name=group-name,Values=$PROJECT-ecs-sg --query 'SecurityGroups[0].GroupId' --output text)],assignPublicIp=ENABLED}" \
+            --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" \
             --query 'tasks[0].taskArn' --output text)
           echo "⏳ Waiting for DB init task..."
           aws ecs wait tasks-stopped --cluster $PROJECT-cluster --tasks $TASK_ARN

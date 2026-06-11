@@ -1,6 +1,6 @@
 resource "aws_db_subnet_group" "main" {
   name       = "${var.project}-db-subnet"
-  subnet_ids = aws_subnet.public[*].id
+  subnet_ids = aws_subnet.private[*].id
 }
 
 resource "aws_security_group" "rds" {
