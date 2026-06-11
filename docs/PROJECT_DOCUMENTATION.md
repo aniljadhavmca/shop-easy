@@ -708,4 +708,112 @@ aws ecs execute-command --cluster shop-easy-cluster \
 
 ---
 
+---
+
+## Connecting to Private ECS Tasks (Debugging)
+
+Since all ECS services run in **private subnets** with no public IPs, you can't SSH into them directly. Use **ECS Exec** — AWS's built-in remote shell for Fargate.
+
+### How It Works
+
+```
+Your Laptop → AWS CLI → SSM Session Manager → NAT Gateway → ECS Task (private subnet)
+```
+
+No bastion host, no SSH keys, no open ports. All via AWS APIs + IAM.
+
+### Prerequisites
+
+1. Add `enable_execute_command = true` to ECS services in Terraform
+2. Add a **task role** (not execution role) with SSM permissions
+3. Install [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) on your laptop
+
+### Terraform Changes Required
+
+**ecs.tf** — enable on each service:
+```hcl
+resource "aws_ecs_service" "order" {
+  ...
+  enable_execute_command = true
+}
+```
+
+**iam.tf** — add task role:
+```hcl
+resource "aws_iam_role" "ecs_task" {
+  name = "${var.project}-ecs-task"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_ssm" {
+  role       = aws_iam_role.ecs_task.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+```
+
+**Task definitions** — add task role:
+```hcl
+resource "aws_ecs_task_definition" "order" {
+  ...
+  execution_role_arn = aws_iam_role.ecs_execution.arn
+  task_role_arn      = aws_iam_role.ecs_task.arn  # ← Add this
+}
+```
+
+### Usage
+
+```bash
+# 1. Find task ID
+aws ecs list-tasks --cluster shop-easy-cluster --service-name order-service
+
+# 2. Connect to container shell
+aws ecs execute-command \
+  --cluster shop-easy-cluster \
+  --task <task-id> \
+  --container order-service \
+  --interactive \
+  --command "/bin/sh"
+
+# 3. Now you're inside the container — debug freely
+ls
+env
+curl http://localhost:4002/health
+node -e "console.log('hello')"
+```
+
+### Common Debugging Commands Inside Container
+
+```bash
+# Check environment variables
+env | grep DB
+
+# Test DB connectivity
+node -e "const m=require('mysql2/promise'); m.createConnection({host:process.env.DB_HOST,user:'admin',password:process.env.DB_PASSWORD,database:'shop_easy'}).then(c=>c.query('SELECT COUNT(*) as n FROM products').then(r=>{console.log(r[0]);c.end()}))"
+
+# Check outbound connectivity (Stripe, ECR)
+curl -s https://api.stripe.com/v1 -o /dev/null -w "%{http_code}"
+
+# Check logs
+cat /proc/1/fd/1  # stdout of main process
+```
+
+### Why ECS Exec Over a Bastion?
+
+| Aspect | Bastion Host | ECS Exec |
+|--------|-------------|----------|
+| Cost | ~$8/mo | $0 |
+| Security | SSH port open, key mgmt | No open ports, IAM-based |
+| Maintenance | Patch OS, rotate keys | Zero |
+| Audit | Manual | CloudTrail logs every session |
+| Setup | VPC + SG + EC2 + keys | 15 lines of Terraform |
+
+---
+
 *This documentation reflects the actual implementation in the `feature/stripe-monitoring` branch.*
