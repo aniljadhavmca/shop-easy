@@ -722,28 +722,73 @@ Your Laptop → AWS CLI → SSM Session Manager → NAT Gateway → ECS Task (pr
 
 No bastion host, no SSH keys, no open ports. All via AWS APIs + IAM.
 
-### Prerequisites (on your laptop)
+### One-Time Setup (macOS)
 
-1. AWS CLI v2 installed
-2. [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) installed
+#### 1. Install AWS CLI (if not installed)
+```bash
+brew install awscli
+aws --version
+```
 
-### What's Enabled in Terraform
+#### 2. Install Session Manager Plugin
+```bash
+# Apple Silicon Mac (M1/M2/M3)
+curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
 
-- `enable_execute_command = true` on all 3 ECS services
-- Task role (`shop-easy-ecs-task`) with `AmazonSSMManagedInstanceCore` policy
-- NAT Gateway allows SSM HTTPS outbound from private subnets
+# Intel Mac — use this instead:
+# curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
 
-### Usage
+unzip sessionmanager-bundle.zip
+sudo ./sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
+
+# Verify
+session-manager-plugin --version
+
+# Clean up
+rm -rf sessionmanager-bundle sessionmanager-bundle.zip
+```
+
+#### 3. Configure AWS Profile
+```bash
+aws configure --profile shop-easy
+```
+
+It will prompt:
+```
+AWS Access Key ID: <paste from sandbox/IAM>
+AWS Secret Access Key: <paste from sandbox/IAM>
+Default region name: us-east-1
+Default output format: json
+```
+
+If your sandbox provides a **Session Token** (temporary credentials):
+```bash
+aws configure set aws_session_token <your_session_token> --profile shop-easy
+```
+
+Activate the profile:
+```bash
+export AWS_PROFILE=shop-easy
+```
+
+Verify:
+```bash
+aws sts get-caller-identity
+```
+
+### Connect to a Container
 
 ```bash
-# 1. Find task ID
+# 1. List running tasks for a service
 aws ecs list-tasks --cluster shop-easy-cluster --service-name order-service
-# Output: arn:aws:ecs:us-east-1:123456789:task/shop-easy-cluster/abc123
 
-# 2. Connect to container shell
+# Output:
+# { "taskArns": ["arn:aws:ecs:us-east-1:123456:task/shop-easy-cluster/abc123def456"] }
+
+# 2. Connect (use just the task ID part after the last /)
 aws ecs execute-command \
   --cluster shop-easy-cluster \
-  --task abc123 \
+  --task abc123def456 \
   --container order-service \
   --interactive \
   --command "/bin/sh"
@@ -751,11 +796,20 @@ aws ecs execute-command \
 # 3. You're inside the private container!
 ```
 
+### Available Services to Connect
+
+| Service | Container Name | What You Can Debug |
+|---------|---------------|-------------------|
+| `order-service` | `order-service` | Payments, Stripe, orders DB |
+| `product-service` | `product-service` | Products, cart, DB queries |
+| `frontend` | `frontend` | Nginx config, static files |
+
 ### Common Debugging Commands
 
 ```bash
 # Check environment variables
 env | grep DB
+env | grep STRIPE
 
 # Test DB connectivity
 node -e "const m=require('mysql2/promise'); m.createConnection({host:process.env.DB_HOST,user:'admin',password:process.env.DB_PASSWORD,database:'shop_easy'}).then(c=>c.query('SELECT COUNT(*) as n FROM products').then(r=>{console.log(r[0]);c.end()}))"
@@ -765,7 +819,36 @@ curl -s https://api.stripe.com/v1 -o /dev/null -w "%{http_code}"
 
 # Check health endpoint
 curl http://localhost:4002/health
+
+# List files in container
+ls -la
+
+# Check running processes
+ps aux
 ```
+
+### Troubleshooting ECS Exec
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `SessionManagerPlugin is not found` | Plugin not installed | Install Session Manager plugin (step 2 above) |
+| `execute command was not enabled` | Task started before `enable_execute_command` was added | Force new deployment: `aws ecs update-service --cluster shop-easy-cluster --service order-service --force-new-deployment` then wait 60s and retry with new task ID |
+| `ExpiredTokenException` | Credentials expired | Get fresh credentials from sandbox, reconfigure profile |
+| `TargetNotConnectedException` | SSM agent not ready | Wait 30 seconds and retry |
+
+### Important Notes
+
+- **New deployments required:** If you just enabled ECS Exec in Terraform, existing tasks won't have it. Force a new deployment or wait for next deploy.
+- **Sandbox credentials expire:** Get fresh keys each session from sandbox dashboard.
+- **Task IDs change on every deployment:** Always run `list-tasks` first to get the current ID.
+- **Exit the session:** Type `exit` or press `Ctrl+D`.
+
+### What's Enabled in Terraform
+
+- `enable_execute_command = true` on all 3 ECS services (`ecs.tf`)
+- Task role `shop-easy-ecs-task` with `AmazonSSMManagedInstanceCore` policy (`iam.tf`)
+- `task_role_arn` set on all task definitions
+- NAT Gateway allows SSM HTTPS outbound from private subnets
 
 ### Why ECS Exec Over a Bastion?
 
