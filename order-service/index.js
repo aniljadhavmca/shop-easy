@@ -29,6 +29,34 @@ app.get('/health', async (req, res) => {
 });
 
 // ─── Orders ───
+app.get('/orders/stats/summary', async (req, res) => {
+  try {
+    const [totals] = await pool.query(`SELECT 
+      COUNT(*) as total_orders,
+      SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END) as paid_orders,
+      SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as failed_orders,
+      SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending_orders,
+      SUM(CASE WHEN status='paid' THEN total ELSE 0 END) as total_revenue
+      FROM orders`);
+    res.json(totals[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/orders/all', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/orders/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    await pool.query('UPDATE orders SET status = ? WHERE id = ?', [status, req.params.id]);
+    res.json({ id: parseInt(req.params.id), status });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/orders/:userId', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [req.params.userId]);

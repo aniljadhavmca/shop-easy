@@ -36,6 +36,37 @@ app.get('/products/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/products', async (req, res) => {
+  try {
+    const { name, description, price, image, category, stock } = req.body;
+    if (!name || !price) return res.status(400).json({ error: 'Name and price are required' });
+    const [result] = await pool.query(
+      'INSERT INTO products (name, description, price, image, category, stock) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, description || '', price, image || '', category || 'General', stock || 0]
+    );
+    res.status(201).json({ id: result.insertId, name, description, price, image, category, stock });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/products/:id', async (req, res) => {
+  try {
+    const { name, description, price, image, category, stock } = req.body;
+    await pool.query(
+      'UPDATE products SET name=?, description=?, price=?, image=?, category=?, stock=? WHERE id=?',
+      [name, description, price, image, category, stock, req.params.id]
+    );
+    res.json({ id: parseInt(req.params.id), name, description, price, image, category, stock });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/products/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM cart_items WHERE product_id = ?', [req.params.id]);
+    await pool.query('DELETE FROM products WHERE id = ?', [req.params.id]);
+    res.status(204).end();
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Cart ───
 app.get('/cart/:userId', async (req, res) => {
   try {
