@@ -251,19 +251,20 @@ nav button.active { background: rgba(233,69,96,0.9); color: white; border-color:
 .stat-orange .stat-icon { background: #fffbeb; }
 .stat-red .stat-icon { background: #fef2f2; }
 
-/* Revenue Chart */
-.revenue-chart { display: flex; flex-direction: column; gap: 16px; }
-.chart-row { display: flex; align-items: center; gap: 12px; }
-.chart-label { width: 60px; font-size: 0.85rem; font-weight: 600; color: #374151; }
-.chart-bar-wrap { flex: 1; height: 32px; background: #f3f4f6; border-radius: 8px; overflow: hidden; }
-.chart-bar { height: 100%; border-radius: 8px; transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); min-width: 4px; }
-.bar-green { background: linear-gradient(135deg, #10b981, #059669); }
-.bar-red { background: linear-gradient(135deg, #ef4444, #dc2626); }
-.bar-yellow { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.chart-value { width: 100px; text-align: right; font-weight: 700; font-size: 0.9rem; }
-.chart-value.green { color: #059669; }
-.chart-value.red { color: #dc2626; }
-.chart-value.yellow { color: #d97706; }
+/* Grafana-style Panels */
+.grafana-panel { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; gap: 10px; }
+.panel-header h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.time-range-selector { display: flex; gap: 4px; }
+.time-range-selector button {
+  padding: 5px 12px; border: 1px solid #e5e7eb; background: white; border-radius: 6px;
+  font-size: 0.75rem; font-weight: 600; cursor: pointer; color: #6b7280; transition: all 0.2s;
+}
+.time-range-selector button:hover { border-color: #6366f1; color: #6366f1; }
+.time-range-selector button.active { background: #6366f1; color: white; border-color: #6366f1; }
+.chart-wrapper { padding: 20px; background: white; }
+.chart-empty { height: 200px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.9rem; }
+@media (max-width: 768px) { .panel-header { flex-direction: column; align-items: flex-start; } .time-range-selector { flex-wrap: wrap; } }
 .stat-info { display: flex; flex-direction: column; }
 .stat-value { font-size: 1.5rem; font-weight: 800; color: #111827; }
 .stat-label { font-size: 0.8rem; color: #6b7280; font-weight: 500; }
@@ -326,6 +327,20 @@ nav button.active { background: rgba(233,69,96,0.9); color: white; border-color:
   cursor: pointer; background: white;
 }
 .admin-status-select:focus { outline: none; border-color: #6366f1; }
+
+/* Order Filter Bar */
+.order-filter-bar { display: flex; gap: 4px; flex-wrap: wrap; }
+.order-filter-bar button {
+  padding: 6px 14px; border: 1px solid #e5e7eb; background: white; border-radius: 6px;
+  font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #6b7280; transition: all 0.2s;
+}
+.order-filter-bar button:hover { border-color: #6366f1; color: #6366f1; }
+.order-filter-bar button.active { background: #6366f1; color: white; border-color: #6366f1; }
+
+/* Product Form Page */
+.admin-product-form-page .product-form-card { max-width: 700px; }
+.admin-product-form-page .admin-form-grid { gap: 16px; }
+.admin-product-form-page textarea { min-height: 100px; }
 
 /* Admin Responsive */
 @media (max-width: 768px) {

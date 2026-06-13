@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import './index.css';
 
 const API = '';
@@ -17,7 +18,7 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
     e.preventDefault();
     if (!stripe || !elements) return;
 
-    if (!shipping.name || !shipping.email || !shipping.address) {
+    if (!shipping.name || !shipping.email || !shipping.phone || !shipping.address) {
       onError('Please fill all shipping details', 'warning'); return;
     }
 
@@ -26,7 +27,7 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
       // 1. Create order
       const orderRes = await fetch(`${API}/orders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: USER_ID, shipping_name: shipping.name, shipping_email: shipping.email, shipping_address: shipping.address })
+        body: JSON.stringify({ user_id: USER_ID, shipping_name: shipping.name, shipping_email: shipping.email, shipping_phone: shipping.phone, shipping_address: shipping.address })
       });
       const order = await orderRes.json();
       if (order.error) { onError(order.error, 'error'); setProcessing(false); return; }
@@ -41,7 +42,10 @@ function CheckoutForm({ cart, cartTotal, shipping, onSuccess, onError }) {
 
       // 3. Confirm card payment
       const { error, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
-        payment_method: { card: elements.getElement(CardElement) }
+        payment_method: {
+          card: elements.getElement(CardElement),
+          billing_details: { name: shipping.name, email: shipping.email, phone: shipping.phone, address: { line1: shipping.address } }
+        }
       });
 
       if (error) {
@@ -88,16 +92,19 @@ function App() {
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
   const [notification, setNotification] = useState({ msg: '', type: '' });
-  const [shipping, setShipping] = useState({ name: '', email: '', address: '' });
+  const [shipping, setShipping] = useState({ name: '', email: '', phone: '', address: '' });
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [adminPage, setAdminPage] = useState('dashboard');
   const [adminStats, setAdminStats] = useState({});
   const [allOrders, setAllOrders] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const [timeRange, setTimeRange] = useState(60);
   const [editingProduct, setEditingProduct] = useState(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [productForm, setProductForm] = useState({ name: '', description: '', price: '', image: '', category: '', stock: '' });
   const [productSearch, setProductSearch] = useState('');
+  const [orderFilter, setOrderFilter] = useState('all');
 
   useEffect(() => { fetchProducts(); fetchCart(); }, []);
 
@@ -106,6 +113,9 @@ function App() {
   const fetchOrders = () => fetch(`${API}/orders/${USER_ID}`).then(r => r.json()).then(setOrders).catch(() => {});
   const fetchAdminStats = () => fetch(`${API}/orders/stats/summary`).then(r => r.json()).then(setAdminStats).catch(() => {});
   const fetchAllOrders = () => fetch(`${API}/orders/all`).then(r => r.json()).then(setAllOrders).catch(() => {});
+  const fetchChartData = (mins) => fetch(`${API}/orders/stats/timeseries?minutes=${mins}`).then(r => r.json()).then(data => {
+    setChartData(data.map(d => ({ ...d, time: new Date(d.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), paid: parseFloat(d.paid) || 0, failed: parseFloat(d.failed) || 0, pending: parseFloat(d.pending) || 0 })));
+  }).catch(() => {});
 
   const notify = (msg, type = 'success') => { setNotification({ msg, type }); setTimeout(() => setNotification({ msg: '', type: '' }), 3000); };
 
@@ -121,7 +131,7 @@ function App() {
   };
 
   const handlePaymentSuccess = () => {
-    fetchCart(); setShipping({ name: '', email: '', address: '' });
+    fetchCart(); setShipping({ name: '', email: '', phone: '', address: '' });
     setPage('products'); notify('🎉 Payment successful! Your order is confirmed.', 'success');
   };
 
@@ -176,7 +186,7 @@ function App() {
               <span>🛒</span> Cart
               {cart.length > 0 && <span className="badge">{cart.length}</span>}
             </button>
-            <button className={page === 'admin' ? 'active' : ''} onClick={() => { setPage('admin'); fetchAdminStats(); fetchAllOrders(); fetchProducts(); }}>
+            <button className={page === 'admin' ? 'active' : ''} onClick={() => { setPage('admin'); fetchAdminStats(); fetchAllOrders(); fetchProducts(); fetchChartData(timeRange); }}>
               <span>⚙️</span> Admin
             </button>
           </nav>
@@ -284,19 +294,24 @@ function App() {
               <div className="checkout-form">
                 <h3>Shipping Details</h3>
                 <div className="form-group">
-                  <label>Full Name</label>
+                  <label>Full Name *</label>
                   <input type="text" placeholder="John Smith" value={shipping.name}
-                    onChange={e => setShipping({...shipping, name: e.target.value})} />
+                    onChange={e => setShipping({...shipping, name: e.target.value})} required />
                 </div>
                 <div className="form-group">
-                  <label>Email</label>
+                  <label>Email *</label>
                   <input type="email" placeholder="john@example.com" value={shipping.email}
-                    onChange={e => setShipping({...shipping, email: e.target.value})} />
+                    onChange={e => setShipping({...shipping, email: e.target.value})} required />
                 </div>
                 <div className="form-group">
-                  <label>Shipping Address</label>
+                  <label>Phone *</label>
+                  <input type="tel" placeholder="+1 (555) 123-4567" value={shipping.phone}
+                    onChange={e => setShipping({...shipping, phone: e.target.value})} required />
+                </div>
+                <div className="form-group">
+                  <label>Shipping Address *</label>
                   <textarea placeholder="123 Main St, City, State, ZIP" value={shipping.address}
-                    onChange={e => setShipping({...shipping, address: e.target.value})} />
+                    onChange={e => setShipping({...shipping, address: e.target.value})} required />
                 </div>
                 <Elements stripe={stripePromise}>
                   <CheckoutForm cart={cart} cartTotal={cartTotal} shipping={shipping}
@@ -325,7 +340,7 @@ function App() {
                 <span>Admin Panel</span>
               </div>
               <nav className="admin-nav">
-                <button className={adminPage === 'dashboard' ? 'active' : ''} onClick={() => { setAdminPage('dashboard'); fetchAdminStats(); fetchAllOrders(); }}>
+                <button className={adminPage === 'dashboard' ? 'active' : ''} onClick={() => { setAdminPage('dashboard'); fetchAdminStats(); fetchAllOrders(); fetchChartData(timeRange); }}>
                   <span>📊</span> Dashboard
                 </button>
                 <button className={adminPage === 'products' ? 'active' : ''} onClick={() => { setAdminPage('products'); fetchProducts(); }}>
@@ -345,7 +360,15 @@ function App() {
                 const paidRevenue = allOrders.filter(o => o.status === 'paid').reduce((s, o) => s + parseFloat(o.total), 0);
                 const failedAmount = allOrders.filter(o => o.status === 'failed').reduce((s, o) => s + parseFloat(o.total), 0);
                 const pendingAmount = allOrders.filter(o => o.status === 'pending').reduce((s, o) => s + parseFloat(o.total), 0);
-                const maxBar = Math.max(paidRevenue, failedAmount, pendingAmount, 1);
+                const timeRanges = [
+                  { label: '10m', value: 10 },
+                  { label: '1h', value: 60 },
+                  { label: '4h', value: 240 },
+                  { label: '6h', value: 360 },
+                  { label: '12h', value: 720 },
+                  { label: '1d', value: 1440 },
+                  { label: '3d', value: 4320 },
+                ];
                 return (
                 <div className="admin-dashboard">
                   <h2>Dashboard</h2>
@@ -381,30 +404,68 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="admin-section">
-                    <h3>💰 Revenue Overview</h3>
-                    <div className="revenue-chart">
-                      <div className="chart-row">
-                        <span className="chart-label">Paid</span>
-                        <div className="chart-bar-wrap">
-                          <div className="chart-bar bar-green" style={{width: `${(paidRevenue / maxBar) * 100}%`}}></div>
-                        </div>
-                        <span className="chart-value green">${paidRevenue.toFixed(2)}</span>
+                  <div className="admin-section grafana-panel">
+                    <div className="panel-header">
+                      <h3>📈 Revenue Over Time</h3>
+                      <div className="time-range-selector">
+                        {timeRanges.map(t => (
+                          <button key={t.value} className={timeRange === t.value ? 'active' : ''}
+                            onClick={() => { setTimeRange(t.value); fetchChartData(t.value); }}>{t.label}</button>
+                        ))}
                       </div>
-                      <div className="chart-row">
-                        <span className="chart-label">Failed</span>
-                        <div className="chart-bar-wrap">
-                          <div className="chart-bar bar-red" style={{width: `${(failedAmount / maxBar) * 100}%`}}></div>
-                        </div>
-                        <span className="chart-value red">${failedAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="chart-row">
-                        <span className="chart-label">Pending</span>
-                        <div className="chart-bar-wrap">
-                          <div className="chart-bar bar-yellow" style={{width: `${(pendingAmount / maxBar) * 100}%`}}></div>
-                        </div>
-                        <span className="chart-value yellow">${pendingAmount.toFixed(2)}</span>
-                      </div>
+                    </div>
+                    <div className="chart-wrapper">
+                      {chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                          <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorPaid" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                            <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} tickFormatter={v => `$${v}`} />
+                            <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, color: '#fff' }}
+                              labelStyle={{ color: '#9ca3af' }} formatter={(v) => [`$${v.toFixed(2)}`]} />
+                            <Legend wrapperStyle={{ fontSize: 12 }} />
+                            <Area type="monotone" dataKey="paid" name="Paid" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorPaid)" />
+                            <Area type="monotone" dataKey="failed" name="Failed" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorFailed)" />
+                            <Area type="monotone" dataKey="pending" name="Pending" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorPending)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="chart-empty">No data in selected time range</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="admin-section grafana-panel">
+                    <div className="panel-header">
+                      <h3>📊 Revenue Breakdown</h3>
+                    </div>
+                    <div className="chart-wrapper">
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={[{ name: 'Revenue', Paid: paidRevenue, Failed: failedAmount, Pending: pendingAmount }]} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                          <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} tickFormatter={v => `$${v}`} />
+                          <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, color: '#fff' }} formatter={(v) => [`$${v.toFixed(2)}`]} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <Bar dataKey="Paid" fill="#10b981" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="Failed" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="Pending" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
 
@@ -432,7 +493,7 @@ function App() {
                 );
               })()}
 
-              {adminPage === 'products' && (
+              {adminPage === 'products' && !showProductForm && (
                 <div className="admin-products">
                   <div className="admin-page-header">
                     <div>
@@ -443,42 +504,6 @@ function App() {
                       + Add Product
                     </button>
                   </div>
-
-                  {(showProductForm || editingProduct !== null) && (
-                    <div className="admin-section product-form-card">
-                      <h3>{editingProduct ? `✏️ Edit: ${editingProduct.name}` : '➕ New Product'}</h3>
-                      <form onSubmit={async (e) => {
-                        e.preventDefault();
-                        if (!productForm.name || !productForm.price) { notify('Name and price required', 'warning'); return; }
-                        const payload = { ...productForm, price: parseFloat(productForm.price), stock: parseInt(productForm.stock) || 0 };
-                        if (editingProduct) {
-                          await fetch(`${API}/products/${editingProduct.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                          notify('✓ Product updated!', 'success');
-                        } else {
-                          await fetch(`${API}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                          notify('✓ Product added!', 'success');
-                        }
-                        setProductForm({ name: '', description: '', price: '', image: '', category: '', stock: '' });
-                        setEditingProduct(null);
-                        setShowProductForm(false);
-                        fetchProducts();
-                      }}>
-                        <div className="admin-form-grid">
-                          <div className="form-group"><label>Name *</label><input type="text" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} placeholder="Product name" /></div>
-                          <div className="form-group"><label>Category</label><input type="text" value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})} placeholder="Electronics" /></div>
-                          <div className="form-group"><label>Price ($) *</label><input type="number" step="0.01" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} placeholder="99.99" /></div>
-                          <div className="form-group"><label>Stock</label><input type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} placeholder="100" /></div>
-                        </div>
-                        <div className="form-group"><label>Description</label><textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} placeholder="Product description..." /></div>
-                        <div className="form-group"><label>Image URL</label><input type="text" value={productForm.image} onChange={e => setProductForm({...productForm, image: e.target.value})} placeholder="https://..." /></div>
-                        {productForm.image && <div className="admin-img-preview"><img src={productForm.image} alt="Preview" onError={e => e.target.style.display='none'} onLoad={e => e.target.style.display='block'} /></div>}
-                        <div className="admin-form-actions">
-                          <button type="submit" className="admin-save-btn">{editingProduct ? 'Update Product' : 'Add Product'}</button>
-                          <button type="button" className="admin-cancel-btn" onClick={() => { setEditingProduct(null); setShowProductForm(false); setProductForm({ name: '', description: '', price: '', image: '', category: '', stock: '' }); }}>Cancel</button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
 
                   <div className="admin-section">
                     <div className="admin-search">
@@ -496,7 +521,7 @@ function App() {
                               <td>${parseFloat(p.price).toFixed(2)}</td>
                               <td><span className={p.stock < 10 ? 'stock-low' : 'stock-ok'}>{p.stock}</span></td>
                               <td className="admin-actions-cell">
-                                <button className="admin-edit-btn" onClick={() => { setEditingProduct(p); setShowProductForm(true); setProductForm({ name: p.name, description: p.description || '', price: p.price, image: p.image || '', category: p.category || '', stock: p.stock }); window.scrollTo(0, 200); }}>✏️</button>
+                                <button className="admin-edit-btn" onClick={() => { setEditingProduct(p); setShowProductForm(true); setProductForm({ name: p.name, description: p.description || '', price: p.price, image: p.image || '', category: p.category || '', stock: p.stock }); }}>✏️</button>
                                 <button className="admin-delete-btn" onClick={async () => { if (window.confirm(`Delete "${p.name}"?`)) { await fetch(`${API}/products/${p.id}`, { method: 'DELETE' }); fetchProducts(); notify('Product deleted', 'success'); } }}>🗑️</button>
                               </td>
                             </tr>
@@ -508,16 +533,71 @@ function App() {
                 </div>
               )}
 
+              {adminPage === 'products' && showProductForm && (
+                <div className="admin-product-form-page">
+                  <div className="admin-page-header">
+                    <div>
+                      <h2>{editingProduct ? `✏️ Edit Product` : '➕ Add New Product'}</h2>
+                      <p className="admin-subtitle">{editingProduct ? `Editing: ${editingProduct.name}` : 'Fill in the product details below'}</p>
+                    </div>
+                    <button className="admin-cancel-btn" onClick={() => { setEditingProduct(null); setShowProductForm(false); setProductForm({ name: '', description: '', price: '', image: '', category: '', stock: '' }); }}>
+                      ← Back to Products
+                    </button>
+                  </div>
+                  <div className="admin-section product-form-card">
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!productForm.name || !productForm.price) { notify('Name and price required', 'warning'); return; }
+                      const payload = { ...productForm, price: parseFloat(productForm.price), stock: parseInt(productForm.stock) || 0 };
+                      if (editingProduct) {
+                        await fetch(`${API}/products/${editingProduct.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        notify('✓ Product updated!', 'success');
+                      } else {
+                        await fetch(`${API}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        notify('✓ Product added!', 'success');
+                      }
+                      setProductForm({ name: '', description: '', price: '', image: '', category: '', stock: '' });
+                      setEditingProduct(null);
+                      setShowProductForm(false);
+                      fetchProducts();
+                    }}>
+                      <div className="admin-form-grid">
+                        <div className="form-group"><label>Name *</label><input type="text" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} placeholder="Product name" /></div>
+                        <div className="form-group"><label>Category</label><input type="text" value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})} placeholder="Electronics" /></div>
+                        <div className="form-group"><label>Price ($) *</label><input type="number" step="0.01" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} placeholder="99.99" /></div>
+                        <div className="form-group"><label>Stock</label><input type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} placeholder="100" /></div>
+                      </div>
+                      <div className="form-group"><label>Description</label><textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} placeholder="Product description..." rows="4" /></div>
+                      <div className="form-group"><label>Image URL</label><input type="text" value={productForm.image} onChange={e => setProductForm({...productForm, image: e.target.value})} placeholder="https://..." /></div>
+                      {productForm.image && <div className="admin-img-preview"><img src={productForm.image} alt="Preview" onError={e => e.target.style.display='none'} onLoad={e => e.target.style.display='block'} /></div>}
+                      <div className="admin-form-actions">
+                        <button type="submit" className="admin-save-btn">{editingProduct ? 'Update Product' : 'Add Product'}</button>
+                        <button type="button" className="admin-cancel-btn" onClick={() => { setEditingProduct(null); setShowProductForm(false); setProductForm({ name: '', description: '', price: '', image: '', category: '', stock: '' }); }}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               {adminPage === 'orders' && (
                 <div className="admin-orders">
-                  <h2>Orders</h2>
-                  <p className="admin-subtitle">Manage all customer orders</p>
+                  <div className="admin-page-header">
+                    <div>
+                      <h2>Orders</h2>
+                      <p className="admin-subtitle">Manage all customer orders</p>
+                    </div>
+                    <div className="order-filter-bar">
+                      {['all', 'paid', 'pending', 'failed', 'shipped', 'delivered'].map(f => (
+                        <button key={f} className={orderFilter === f ? 'active' : ''} onClick={() => setOrderFilter(f)}>{f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="admin-section">
                     <div className="admin-table-wrapper">
                       <table className="admin-table">
                         <thead><tr><th>ID</th><th>Customer</th><th>Email</th><th>Total</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
                         <tbody>
-                          {allOrders.map(o => (
+                          {allOrders.filter(o => orderFilter === 'all' || o.status === orderFilter).map(o => (
                             <tr key={o.id}>
                               <td>#{o.id}</td>
                               <td>{o.shipping_name || 'Guest'}</td>
@@ -541,7 +621,7 @@ function App() {
                           ))}
                         </tbody>
                       </table>
-                      {allOrders.length === 0 && <p className="admin-empty">No orders yet</p>}
+                      {allOrders.filter(o => orderFilter === 'all' || o.status === orderFilter).length === 0 && <p className="admin-empty">No {orderFilter} orders</p>}
                     </div>
                   </div>
                 </div>
@@ -561,7 +641,7 @@ function App() {
             <h4>Quick Links</h4>
             <a href="#!" onClick={() => setPage('products')}>Products</a>
             <a href="#!" onClick={() => setPage('cart')}>Cart</a>
-            <a href="#!" onClick={() => { setPage('admin'); fetchAdminStats(); fetchAllOrders(); fetchProducts(); }}>Admin</a>
+            <a href="#!" onClick={() => { setPage('admin'); fetchAdminStats(); fetchAllOrders(); fetchProducts(); fetchChartData(timeRange); }}>Admin</a>
           </div>
           <div className="footer-links">
             <h4>Built With</h4>

@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS orders (
     total DECIMAL(10,2) NOT NULL,
     shipping_name VARCHAR(255),
     shipping_email VARCHAR(255),
+    shipping_phone VARCHAR(50),
     shipping_address TEXT,
     status ENUM('pending','paid','failed','shipped','delivered','cancelled') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -43,10 +44,17 @@ CREATE TABLE IF NOT EXISTS orders (
 
 -- Add shipping columns if table already exists (idempotent)
 SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='shop_easy' AND TABLE_NAME='orders' AND COLUMN_NAME='shipping_name');
-SET @sql = IF(@col_exists = 0, 'ALTER TABLE orders ADD COLUMN shipping_name VARCHAR(255), ADD COLUMN shipping_email VARCHAR(255), ADD COLUMN shipping_address TEXT', 'SELECT 1');
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE orders ADD COLUMN shipping_name VARCHAR(255), ADD COLUMN shipping_email VARCHAR(255), ADD COLUMN shipping_phone VARCHAR(50), ADD COLUMN shipping_address TEXT', 'SELECT 1');
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Add shipping_phone if missing (idempotent)
+SET @phone_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='shop_easy' AND TABLE_NAME='orders' AND COLUMN_NAME='shipping_phone');
+SET @sql2 = IF(@phone_exists = 0, 'ALTER TABLE orders ADD COLUMN shipping_phone VARCHAR(50) AFTER shipping_email', 'SELECT 1');
+PREPARE stmt2 FROM @sql2;
+EXECUTE stmt2;
+DEALLOCATE PREPARE stmt2;
 
 -- Add 'failed' to status ENUM if not present (idempotent)
 ALTER TABLE orders MODIFY COLUMN status ENUM('pending','paid','failed','shipped','delivered','cancelled') DEFAULT 'pending';

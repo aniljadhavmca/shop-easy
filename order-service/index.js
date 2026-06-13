@@ -42,6 +42,28 @@ app.get('/orders/stats/summary', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/orders/stats/timeseries', async (req, res) => {
+  try {
+    const minutes = parseInt(req.query.minutes) || 60;
+    const [rows] = await pool.query(
+      `SELECT 
+        FLOOR(UNIX_TIMESTAMP(created_at) / (? * 60 / 20)) as bucket,
+        MIN(created_at) as time,
+        SUM(CASE WHEN status='paid' THEN total ELSE 0 END) as paid,
+        SUM(CASE WHEN status='failed' THEN total ELSE 0 END) as failed,
+        SUM(CASE WHEN status='pending' THEN total ELSE 0 END) as pending,
+        COUNT(CASE WHEN status='paid' THEN 1 END) as paid_count,
+        COUNT(CASE WHEN status='failed' THEN 1 END) as failed_count,
+        COUNT(CASE WHEN status='pending' THEN 1 END) as pending_count
+      FROM orders 
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+      GROUP BY bucket ORDER BY bucket`,
+      [Math.max(minutes / 20, 1), minutes]
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/orders/all', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
@@ -65,7 +87,7 @@ app.get('/orders/:userId', async (req, res) => {
 });
 
 app.post('/orders', async (req, res) => {
-  const { user_id, shipping_name, shipping_email, shipping_address } = req.body;
+  const { user_id, shipping_name, shipping_email, shipping_phone, shipping_address } = req.body;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -77,8 +99,8 @@ app.post('/orders', async (req, res) => {
 
     const total = cartItems.reduce((sum, i) => sum + parseFloat(i.price) * i.quantity, 0);
     const [order] = await conn.query(
-      'INSERT INTO orders (user_id, total, shipping_name, shipping_email, shipping_address) VALUES (?, ?, ?, ?, ?)',
-      [user_id, total, shipping_name, shipping_email, shipping_address]
+      'INSERT INTO orders (user_id, total, shipping_name, shipping_email, shipping_phone, shipping_address) VALUES (?, ?, ?, ?, ?, ?)',
+      [user_id, total, shipping_name, shipping_email, shipping_phone || '', shipping_address]
     );
 
     for (const item of cartItems) {
@@ -110,9 +132,10 @@ app.post('/payments/create-intent', async (req, res) => {
       receipt_email: order[0].shipping_email,
       shipping: {
         name: order[0].shipping_name,
+        phone: order[0].shipping_phone || '',
         address: { line1: order[0].shipping_address }
       },
-      metadata: { order_id: String(order_id), customer: order[0].shipping_name, email: order[0].shipping_email, address: order[0].shipping_address },
+      metadata: { order_id: String(order_id), customer: order[0].shipping_name, email: order[0].shipping_email, phone: order[0].shipping_phone || '', address: order[0].shipping_address },
     });
 
     res.json({ clientSecret: paymentIntent.client_secret });
