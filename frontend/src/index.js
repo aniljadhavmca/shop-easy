@@ -245,19 +245,27 @@ function App() {
                 <div className="hot-deals-inner">
                   <h2>💥 Hot Deals</h2>
                   <div className="hot-deals-grid">
-                    {products.slice().sort(() => 0.5 - Math.random()).slice(0, 4).map(p => (
+                    {products.slice().sort(() => 0.5 - Math.random()).slice(0, 4).map(p => {
+                      const rating = (3.5 + Math.random() * 1.5).toFixed(1);
+                      const reviews = Math.floor(50 + Math.random() * 450);
+                      return (
                       <div key={p.id} className="hot-deal-card" onClick={() => setSelectedProduct(p)}>
-                        <span className="hot-badge">🔥 HOT</span>
-                        <img src={p.image} alt={p.name} />
+                        <span className="sale-badge">🌟 SALE</span>
+                        <div className="hot-deal-img"><img src={p.image} alt={p.name} /></div>
                         <div className="hot-deal-info">
                           <h4>{p.name}</h4>
+                          <div className="star-rating">
+                            <span className="stars">{'★'.repeat(Math.floor(rating))}{'☆'.repeat(5 - Math.floor(rating))}</span>
+                            <span className="rating-text">{rating} ({reviews})</span>
+                          </div>
                           <div className="hot-deal-price">
                             <span className="hot-original">${(p.price * 1.4).toFixed(2)}</span>
                             <span className="hot-current">${parseFloat(p.price).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </section>
@@ -291,7 +299,10 @@ function App() {
                 ))}
               </div>
               <div className="products-grid">
-                {products.filter(p => activeFilter === 'All' || p.category === activeFilter).map(p => (
+                {products.filter(p => activeFilter === 'All' || p.category === activeFilter).map(p => {
+                  const rating = (3.5 + (p.id * 0.3) % 1.5).toFixed(1);
+                  const reviews = 50 + (p.id * 47) % 400;
+                  return (
                   <div key={p.id} className="product-card" onClick={() => setSelectedProduct(p)}>
                     <div className="product-image">
                       <img src={p.image} alt={p.name} />
@@ -300,6 +311,10 @@ function App() {
                     <div className="product-info">
                       <span className="category">{p.category}</span>
                       <h3>{p.name}</h3>
+                      <div className="star-rating">
+                        <span className="stars">{'\u2605'.repeat(Math.floor(rating))}{'\u2606'.repeat(5 - Math.floor(rating))}</span>
+                        <span className="rating-text">{rating} ({reviews})</span>
+                      </div>
                       <p className="description">{p.description}</p>
                       <div className="product-footer">
                         <div className="price-tag">
@@ -313,7 +328,8 @@ function App() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
 
@@ -863,30 +879,37 @@ function App() {
         )}
       </main>
 
-      <footer className="footer">
-        <div className="footer-inner">
-          <div className="footer-brand">
-            <span className="logo-icon">🛍️</span> ShopEasy
-            <p>Your one-stop shop for premium tech</p>
+      {page !== 'admin' && (
+        <footer className="footer">
+          <div className="footer-inner">
+            <div className="footer-brand">
+              <span className="logo-icon">🛍️</span> ShopEasy
+              <p>Your one-stop shop for premium tech</p>
+            </div>
+            <div className="footer-links">
+              <h4>Quick Links</h4>
+              <a href="#!" onClick={() => setPage('products')}>Products</a>
+              <a href="#!" onClick={() => setPage('cart')}>Cart</a>
+              <a href="#!" onClick={() => setPage('myorders')}>My Orders</a>
+              <a href="#!" onClick={() => { setPage('admin'); if (adminLoggedIn) { fetchAdminStats(); fetchAllOrders(); fetchProducts(); fetchChartData(timeRange); } }}>Admin</a>
+            </div>
+            <div className="footer-links">
+              <h4>Built With</h4>
+              <span>React + Node.js</span>
+              <span>AWS ECS Fargate</span>
+              <span>MySQL RDS</span>
+            </div>
           </div>
-          <div className="footer-links">
-            <h4>Quick Links</h4>
-            <a href="#!" onClick={() => setPage('products')}>Products</a>
-            <a href="#!" onClick={() => setPage('cart')}>Cart</a>
-            <a href="#!" onClick={() => setPage('myorders')}>My Orders</a>
-            <a href="#!" onClick={() => { setPage('admin'); if (adminLoggedIn) { fetchAdminStats(); fetchAllOrders(); fetchProducts(); fetchChartData(timeRange); } }}>Admin</a>
+          <div className="footer-bottom">
+            <p>© 2024 ShopEasy. All rights reserved. Proudly built by <strong>Anil Jadhav</strong></p>
           </div>
-          <div className="footer-links">
-            <h4>Built With</h4>
-            <span>React + Node.js</span>
-            <span>AWS ECS Fargate</span>
-            <span>MySQL RDS</span>
-          </div>
+        </footer>
+      )}
+      {page === 'admin' && (
+        <div className="admin-footer">
+          <p>© 2024 ShopEasy. Proudly built by <strong>Anil Jadhav</strong></p>
         </div>
-        <div className="footer-bottom">
-          <p>© 2024 ShopEasy. All rights reserved. Proudly built by <strong>Anil Jadhav</strong></p>
-        </div>
-      </footer>
+      )}
     </div>
   );
 }
