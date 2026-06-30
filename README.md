@@ -72,7 +72,7 @@
 
 ### Setup (once)
 
-Add **6 secrets** to your GitHub repo → Settings → Secrets → Actions:
+Add **7 secrets** to your GitHub repo → Settings → Secrets → Actions:
 
 | Secret | Value |
 |--------|-------|
@@ -82,6 +82,7 @@ Add **6 secrets** to your GitHub repo → Settings → Secrets → Actions:
 | `STRIPE_SECRET_KEY` | Stripe test secret key (`sk_test_...`) |
 | `STRIPE_PUBLISHABLE_KEY` | Stripe test publishable key (`pk_test_...`) |
 | `PAGERDUTY_INTEGRATION_KEY` | PagerDuty Events API v2 integration key |
+| `SONAR_TOKEN` | SonarCloud token (My Account → Security → Generate) |
 
 ### Deploy
 
