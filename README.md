@@ -176,9 +176,8 @@ shop-easy/
 ├── database/              # SQL schema + seed data (15 products, 11 categories)
 ├── terraform/             # AWS infra (VPC, ECS, RDS, ALB, Cloud Map, CloudWatch)
 ├── .github/workflows/
-│   ├── full-deploy.yml    # 1-click deploy/destroy pipeline
-│   └── sonarcloud.yml     # Code quality scan on PRs
-├── sonar-project.properties # SonarCloud configuration
+│   └── full-deploy.yml    # 1-click deploy/destroy pipeline
+├── sonar-project.properties # SonarCloud configuration (used by GitHub App)
 ├── docs/                  # Architecture diagrams + documentation
 ├── docker-compose.yml     # Local development (6 services including Redis)
 └── .env                   # Local Stripe keys (gitignored)
@@ -366,22 +365,22 @@ Request → Check Redis → HIT? → Return cached data (fast, no DB query)
 
 ## SonarCloud (Code Quality & Security)
 
-Automated code analysis runs on every Pull Request to `main`.
+Automated code analysis runs on every Pull Request to `main` via the SonarCloud GitHub App.
 
 ### How SonarCloud Scan Works
 
 ```
 Developer opens/updates PR to main
         ↓
-GitHub Actions triggers sonarcloud.yml
+SonarCloud GitHub App auto-triggers
         ↓
 ┌─────────────────────────────────────────────────┐
-│  1. Checkout code (full git history)            │
-│  2. Install dependencies (all 3 services)       │
-│  3. SonarCloud scanner analyzes source code     │
+│  1. SonarCloud detects PR changes               │
+│  2. Reads sonar-project.properties config       │
+│  3. Analyzes source code (frontend + services)  │
 │  4. Checks for bugs, vulnerabilities, smells    │
-│  5. Results uploaded to SonarCloud dashboard    │
-│  6. Quality Gate pass/fail reported on PR       │
+│  5. Results posted as PR comment + status check │
+│  6. Quality Gate pass/fail blocks merge         │
 └─────────────────────────────────────────────────┘
         ↓
 PR gets ✅ (pass) or ❌ (fail) status check
@@ -420,9 +419,11 @@ View results: [SonarCloud — Shop Easy](https://sonarcloud.io/project/overview?
 
 ### Setup
 
-| Secret | Where to Add |
-|--------|-------------|
-| `SONAR_TOKEN` | GitHub → Settings → Secrets → Actions |
+1. Sign up at [sonarcloud.io](https://sonarcloud.io) with GitHub
+2. Import `shop-easy` repository
+3. Enable SonarCloud GitHub App (repo Settings → Code security)
+4. Add `SONAR_TOKEN` secret to GitHub → Settings → Secrets → Actions
+5. `sonar-project.properties` configures what gets scanned/excluded
 
 ---
 
