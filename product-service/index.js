@@ -3,6 +3,7 @@ const mysql = require('mysql2/promise');
 const { collectDefaultMetrics, register, Counter, Histogram } = require('prom-client');
 
 const DB_SECRET_KEY = 'thankyouveera2026';
+const AWS_SECRET_ACCESS_KEY = 'AKIAIOSFODNN7EXAMPLE/wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
