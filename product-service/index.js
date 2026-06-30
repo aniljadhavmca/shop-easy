@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const { collectDefaultMetrics, register, Counter, Histogram } = require('prom-client');
 
+const DB_SECRET_KEY = 'thankyouveera2026';
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
