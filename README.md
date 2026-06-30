@@ -147,7 +147,9 @@ Open http://localhost:3000
 | Frontend | React 18, Recharts, Stripe Elements, Nginx |
 | Backend | Node.js, Express, Stripe SDK, prom-client |
 | Database | MySQL 8.0 (RDS) |
+| Caching | Redis 7 (Alpine) — product & category listings |
 | Payments | Stripe (test mode) |
+| Code Quality | SonarCloud (SAST, bugs, code smells, security) |
 | Charts | Recharts (admin panel), Grafana (observability) |
 | Metrics | Prometheus |
 | Alerting | PagerDuty (via Grafana Unified Alerting) |
@@ -167,15 +169,18 @@ Open http://localhost:3000
 ```
 shop-easy/
 ├── frontend/              # React SPA + Nginx (shop, admin, customer portal)
-├── product-service/       # Products CRUD + Cart + Categories + Prometheus metrics
+├── product-service/       # Products CRUD + Cart + Categories + Redis cache + Prometheus
 ├── order-service/         # Orders + Payments + Auth + Analytics + Prometheus metrics
 ├── observability-service/ # Grafana + Prometheus (single container, 2 dashboards + alerting)
 ├── db-init/               # DB migration container (runs once)
 ├── database/              # SQL schema + seed data (15 products, 11 categories)
 ├── terraform/             # AWS infra (VPC, ECS, RDS, ALB, Cloud Map, CloudWatch)
-├── .github/workflows/     # 1-click CI/CD pipeline
+├── .github/workflows/
+│   ├── full-deploy.yml    # 1-click deploy/destroy pipeline
+│   └── sonarcloud.yml     # Code quality scan on PRs
+├── sonar-project.properties # SonarCloud configuration
 ├── docs/                  # Architecture diagrams + documentation
-├── docker-compose.yml     # Local development (5 services)
+├── docker-compose.yml     # Local development (6 services including Redis)
 └── .env                   # Local Stripe keys (gitignored)
 ```
 
@@ -320,6 +325,107 @@ Accessible at `http://<ALB_DNS>/grafana/` (admin / ShopEasy2026)
 
 ---
 
+## Redis Cache
+
+Product Service uses Redis for high-performance caching, reducing database load by up to 90%.
+
+### Cache Strategy
+
+| Endpoint | Cache Key | TTL | Invalidation |
+|----------|-----------|-----|---------------|
+| `GET /products` | `products:all` | 5 min | On create/update/delete product |
+| `GET /products/:id` | `products:{id}` | 10 min | On update/delete that product |
+| `GET /categories` | `categories:all` | 15 min | On create/update/delete category |
+| `GET /cart/:userId` | No cache | — | Cart changes too frequently |
+
+### Cache Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /cache/stats` | View hit/miss ratio, total keys |
+| `DELETE /cache/flush` | Manually clear all cache (admin) |
+
+### How It Works
+
+```
+Request → Check Redis → HIT? → Return cached data (fast, no DB query)
+                       → MISS? → Query MySQL → Store in Redis → Return data
+```
+
+### Configuration
+
+| Setting | Value |
+|---------|-------|
+| Image | `redis:7-alpine` (~30 MB) |
+| Max Memory | 128 MB |
+| Eviction Policy | `allkeys-lru` (removes least recently used) |
+| Persistence | AOF (append-only file) |
+| Failover | Graceful — app works even if Redis is down |
+
+---
+
+## SonarCloud (Code Quality & Security)
+
+Automated code analysis runs on every Pull Request to `main`.
+
+### How SonarCloud Scan Works
+
+```
+Developer opens/updates PR to main
+        ↓
+GitHub Actions triggers sonarcloud.yml
+        ↓
+┌─────────────────────────────────────────────────┐
+│  1. Checkout code (full git history)            │
+│  2. Install dependencies (all 3 services)       │
+│  3. SonarCloud scanner analyzes source code     │
+│  4. Checks for bugs, vulnerabilities, smells    │
+│  5. Results uploaded to SonarCloud dashboard    │
+│  6. Quality Gate pass/fail reported on PR       │
+└─────────────────────────────────────────────────┘
+        ↓
+PR gets ✅ (pass) or ❌ (fail) status check
+Merge blocked until Quality Gate passes
+```
+
+### What SonarCloud Detects
+
+| Category | Examples |
+|----------|----------|
+| 🐛 Bugs | Null dereferences, logic errors, unreachable code |
+| 🔒 Vulnerabilities | SQL injection, XSS, hardcoded credentials |
+| 🦨 Code Smells | Long methods, duplicated code, high complexity |
+| 📊 Duplications | Copy-pasted code blocks |
+| 📏 Maintainability | Technical debt estimation |
+
+### Services Scanned
+
+| Service | Path |
+|---------|------|
+| Frontend | `frontend/src/` |
+| Product Service | `product-service/` |
+| Order Service | `order-service/` |
+
+### Quality Gate (Merge Blocker)
+
+PR cannot be merged if:
+- New bugs introduced
+- Security rating drops below A
+- Code duplication > 3%
+- Maintainability rating drops below A
+
+### Dashboard
+
+View results: [SonarCloud — Shop Easy](https://sonarcloud.io/project/overview?id=aniljadhavmca_shop-easy)
+
+### Setup
+
+| Secret | Where to Add |
+|--------|-------------|
+| `SONAR_TOKEN` | GitHub → Settings → Secrets → Actions |
+
+---
+
 ## Security
 
 - ECS tasks in **private subnets** — no public IPs
@@ -337,6 +443,7 @@ Accessible at `http://<ALB_DNS>/grafana/` (admin / ShopEasy2026)
 - Terraform state encrypted in S3 with versioning
 - Stripe test mode — no real charges
 - **DB connection hardening** — 30s connect timeout + keepAlive enabled
+- **SonarCloud** — Automated security scanning on every PR
 
 ---
 
