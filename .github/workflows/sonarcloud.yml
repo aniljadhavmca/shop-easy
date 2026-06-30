@@ -28,3 +28,6 @@ jobs:
           args: >
             -Dsonar.projectKey=aniljadhavmca_shop-easy
             -Dsonar.organization=aniljadhavmca
+            -Dsonar.pullrequest.provider=github
+            -Dsonar.pullrequest.github.repository=aniljadhavmca/shop-easy
+            -Dsonar.qualitygate.wait=true
