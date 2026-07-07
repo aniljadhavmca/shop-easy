@@ -32,14 +32,14 @@ app.get('/metrics', async (req, res) => {
 // Structured logging for CloudWatch Logs Insights
 const log = (event, data) => console.log(JSON.stringify({ timestamp: new Date().toISOString(), event, ...data }));
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 let pool;
 const connectDB = () => {
   pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'password',
+    password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'shop_easy',
     waitForConnections: true,
     connectionLimit: 5,

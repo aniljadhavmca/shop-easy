@@ -2,7 +2,7 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
       MYSQL_DATABASE: shop_easy
     ports:
       - "3306:3306"
@@ -14,6 +14,19 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   product-service:
     build: ./product-service
     ports:
@@ -21,10 +34,13 @@ services:
     environment:
       DB_HOST: db
       DB_USER: root
-      DB_PASSWORD: password
+      DB_PASSWORD: ${DB_PASSWORD:-password}
       DB_NAME: shop_easy
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       db: { condition: service_healthy }
+      redis: { condition: service_healthy }
 
   order-service:
     build: ./order-service
@@ -33,7 +49,7 @@ services:
     environment:
       DB_HOST: db
       DB_USER: root
-      DB_PASSWORD: password
+      DB_PASSWORD: ${DB_PASSWORD:-password}
       DB_NAME: shop_easy
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
@@ -64,3 +80,6 @@ services:
     depends_on:
       - product-service
       - order-service
+
+volumes:
+  redis_data:
